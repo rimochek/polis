@@ -1,0 +1,43 @@
+{
+  "name": "polis-workspace",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "concurrently -k \"npm:server\" \"npm:client\"",
+    "server": "node --env-file-if-exists=.env --import tsx server/index.ts",
+    "client": "vite --host 127.0.0.1",
+    "build": "tsc --noEmit && vite build",
+    "test": "node --import tsx --test tests/*.test.ts",
+    "prepare:landing": "node --import tsx scripts/prepare-landing.ts",
+    "dev:landing": "vite --config vite.landing.config.ts",
+    "build:landing": "npm run prepare:landing && tsc --noEmit && vite build --config vite.landing.config.ts && node --import tsx scripts/finalize-landing.ts"
+  },
+  "dependencies": {
+    "@fontsource-variable/golos-text": "latest",
+    "@fontsource/noto-sans": "latest",
+    "@pdf-lib/fontkit": "latest",
+    "@phosphor-icons/react": "latest",
+    "@radix-ui/react-dialog": "latest",
+    "express": "latest",
+    "multer": "latest",
+    "pdf-lib": "latest",
+    "pdfjs-dist": "^6.3.289",
+    "react": "latest",
+    "react-dom": "latest",
+    "zod": "latest"
+  },
+  "devDependencies": {
+    "@playwright/cli": "^0.1.19",
+    "@types/express": "latest",
+    "@types/multer": "latest",
+    "@types/node": "latest",
+    "@types/react": "latest",
+    "@types/react-dom": "latest",
+    "@vitejs/plugin-react": "latest",
+    "concurrently": "latest",
+    "tsx": "latest",
+    "typescript": "latest",
+    "vite": "latest"
+  }
+}

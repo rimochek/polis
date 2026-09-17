@@ -1,0 +1,489 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-09-11T15:41:24.654Z",
+  "title": "Design System: Polis",
+  "extensions": {
+    "colorMeta": {
+      "finding-mismatch": {
+        "role": "semantic",
+        "displayName": "Deep Difference Amber",
+        "tonalRamp": [
+          "oklch(15% 0.0852 79.4)",
+          "oklch(26% 0.0852 79.4)",
+          "oklch(38% 0.0852 79.4)",
+          "oklch(49% 0.0852 79.4)",
+          "oklch(61% 0.0852 79.4)",
+          "oklch(72% 0.0852 79.4)",
+          "oklch(84% 0.0852 79.4)",
+          "oklch(95% 0.0852 79.4)"
+        ]
+      },
+      "finding-unknown": {
+        "role": "semantic",
+        "displayName": "Deep Uncertain Sage",
+        "tonalRamp": [
+          "oklch(15% 0.0514 126.2)",
+          "oklch(26% 0.0514 126.2)",
+          "oklch(38% 0.0514 126.2)",
+          "oklch(49% 0.0514 126.2)",
+          "oklch(61% 0.0514 126.2)",
+          "oklch(72% 0.0514 126.2)",
+          "oklch(84% 0.0514 126.2)",
+          "oklch(95% 0.0514 126.2)"
+        ]
+      },
+      "primary": {
+        "role": "primary",
+        "displayName": "Document Teal",
+        "tonalRamp": [
+          "oklch(15% 0.0691 174.7)",
+          "oklch(26% 0.0691 174.7)",
+          "oklch(38% 0.0691 174.7)",
+          "oklch(49% 0.0691 174.7)",
+          "oklch(61% 0.0691 174.7)",
+          "oklch(72% 0.0691 174.7)",
+          "oklch(84% 0.0691 174.7)",
+          "oklch(95% 0.0691 174.7)"
+        ]
+      },
+      "primary-hover": {
+        "role": "primary",
+        "displayName": "Deep Document Teal",
+        "tonalRamp": [
+          "oklch(15% 0.0581 174.7)",
+          "oklch(26% 0.0581 174.7)",
+          "oklch(38% 0.0581 174.7)",
+          "oklch(49% 0.0581 174.7)",
+          "oklch(61% 0.0581 174.7)",
+          "oklch(72% 0.0581 174.7)",
+          "oklch(84% 0.0581 174.7)",
+          "oklch(95% 0.0581 174.7)"
+        ]
+      },
+      "charcoal-green": {
+        "role": "primary",
+        "displayName": "Charcoal Green",
+        "tonalRamp": [
+          "oklch(15% 0.0238 200.3)",
+          "oklch(26% 0.0238 200.3)",
+          "oklch(38% 0.0238 200.3)",
+          "oklch(49% 0.0238 200.3)",
+          "oklch(61% 0.0238 200.3)",
+          "oklch(72% 0.0238 200.3)",
+          "oklch(84% 0.0238 200.3)",
+          "oklch(95% 0.0238 200.3)"
+        ]
+      },
+      "lime": {
+        "role": "secondary",
+        "displayName": "Soft Lime",
+        "tonalRamp": [
+          "oklch(15% 0.0680 128.5)",
+          "oklch(26% 0.0680 128.5)",
+          "oklch(38% 0.0680 128.5)",
+          "oklch(49% 0.0680 128.5)",
+          "oklch(61% 0.0680 128.5)",
+          "oklch(72% 0.0680 128.5)",
+          "oklch(84% 0.0680 128.5)",
+          "oklch(95% 0.0680 128.5)"
+        ]
+      },
+      "ink": {
+        "role": "neutral",
+        "displayName": "Green Ink",
+        "tonalRamp": [
+          "oklch(15% 0.0223 191.5)",
+          "oklch(26% 0.0223 191.5)",
+          "oklch(38% 0.0223 191.5)",
+          "oklch(49% 0.0223 191.5)",
+          "oklch(61% 0.0223 191.5)",
+          "oklch(72% 0.0223 191.5)",
+          "oklch(84% 0.0223 191.5)",
+          "oklch(95% 0.0223 191.5)"
+        ]
+      },
+      "muted": {
+        "role": "neutral",
+        "displayName": "Quiet Sage",
+        "tonalRamp": [
+          "oklch(15% 0.0201 169.5)",
+          "oklch(26% 0.0201 169.5)",
+          "oklch(38% 0.0201 169.5)",
+          "oklch(49% 0.0201 169.5)",
+          "oklch(61% 0.0201 169.5)",
+          "oklch(72% 0.0201 169.5)",
+          "oklch(84% 0.0201 169.5)",
+          "oklch(95% 0.0201 169.5)"
+        ]
+      },
+      "canvas": {
+        "role": "neutral",
+        "displayName": "Cool Canvas",
+        "tonalRamp": [
+          "oklch(15% 0.0025 165.1)",
+          "oklch(26% 0.0025 165.1)",
+          "oklch(38% 0.0025 165.1)",
+          "oklch(49% 0.0025 165.1)",
+          "oklch(61% 0.0025 165.1)",
+          "oklch(72% 0.0025 165.1)",
+          "oklch(84% 0.0025 165.1)",
+          "oklch(95% 0.0025 165.1)"
+        ]
+      },
+      "paper": {
+        "role": "neutral",
+        "displayName": "White Paper",
+        "tonalRamp": [
+          "oklch(15% 0.0000 89.9)",
+          "oklch(26% 0.0000 89.9)",
+          "oklch(38% 0.0000 89.9)",
+          "oklch(49% 0.0000 89.9)",
+          "oklch(61% 0.0000 89.9)",
+          "oklch(72% 0.0000 89.9)",
+          "oklch(84% 0.0000 89.9)",
+          "oklch(95% 0.0000 89.9)"
+        ]
+      },
+      "dialog-paper": {
+        "role": "neutral",
+        "displayName": "Dialog Paper",
+        "tonalRamp": [
+          "oklch(15% 0.0041 121.6)",
+          "oklch(26% 0.0041 121.6)",
+          "oklch(38% 0.0041 121.6)",
+          "oklch(49% 0.0041 121.6)",
+          "oklch(61% 0.0041 121.6)",
+          "oklch(72% 0.0041 121.6)",
+          "oklch(84% 0.0041 121.6)",
+          "oklch(95% 0.0041 121.6)"
+        ]
+      },
+      "divider": {
+        "role": "neutral",
+        "displayName": "Fine Divider",
+        "tonalRamp": [
+          "oklch(15% 0.0084 157.1)",
+          "oklch(26% 0.0084 157.1)",
+          "oklch(38% 0.0084 157.1)",
+          "oklch(49% 0.0084 157.1)",
+          "oklch(61% 0.0084 157.1)",
+          "oklch(72% 0.0084 157.1)",
+          "oklch(84% 0.0084 157.1)",
+          "oklch(95% 0.0084 157.1)"
+        ]
+      },
+      "evidence-text": {
+        "role": "neutral",
+        "displayName": "Evidence Sage",
+        "tonalRamp": [
+          "oklch(15% 0.0231 154.4)",
+          "oklch(26% 0.0231 154.4)",
+          "oklch(38% 0.0231 154.4)",
+          "oklch(49% 0.0231 154.4)",
+          "oklch(61% 0.0231 154.4)",
+          "oklch(72% 0.0231 154.4)",
+          "oklch(84% 0.0231 154.4)",
+          "oklch(95% 0.0231 154.4)"
+        ]
+      },
+      "source-text": {
+        "role": "neutral",
+        "displayName": "Source Sage",
+        "tonalRamp": [
+          "oklch(15% 0.0240 156.3)",
+          "oklch(26% 0.0240 156.3)",
+          "oklch(38% 0.0240 156.3)",
+          "oklch(49% 0.0240 156.3)",
+          "oklch(61% 0.0240 156.3)",
+          "oklch(72% 0.0240 156.3)",
+          "oklch(84% 0.0240 156.3)",
+          "oklch(95% 0.0240 156.3)"
+        ]
+      },
+      "match": {
+        "role": "semantic",
+        "displayName": "Match Green",
+        "tonalRamp": [
+          "oklch(15% 0.0700 147.9)",
+          "oklch(26% 0.0700 147.9)",
+          "oklch(38% 0.0700 147.9)",
+          "oklch(49% 0.0700 147.9)",
+          "oklch(61% 0.0700 147.9)",
+          "oklch(72% 0.0700 147.9)",
+          "oklch(84% 0.0700 147.9)",
+          "oklch(95% 0.0700 147.9)"
+        ]
+      },
+      "mismatch": {
+        "role": "semantic",
+        "displayName": "Difference Amber",
+        "tonalRamp": [
+          "oklch(15% 0.0952 86.3)",
+          "oklch(26% 0.0952 86.3)",
+          "oklch(38% 0.0952 86.3)",
+          "oklch(49% 0.0952 86.3)",
+          "oklch(61% 0.0952 86.3)",
+          "oklch(72% 0.0952 86.3)",
+          "oklch(84% 0.0952 86.3)",
+          "oklch(95% 0.0952 86.3)"
+        ]
+      },
+      "unknown": {
+        "role": "semantic",
+        "displayName": "Uncertain Sage",
+        "tonalRamp": [
+          "oklch(15% 0.0275 139.8)",
+          "oklch(26% 0.0275 139.8)",
+          "oklch(38% 0.0275 139.8)",
+          "oklch(49% 0.0275 139.8)",
+          "oklch(61% 0.0275 139.8)",
+          "oklch(72% 0.0275 139.8)",
+          "oklch(84% 0.0275 139.8)",
+          "oklch(95% 0.0275 139.8)"
+        ]
+      },
+      "mismatch-surface": {
+        "role": "semantic",
+        "displayName": "Warm Difference Paper",
+        "tonalRamp": [
+          "oklch(15% 0.0098 87.5)",
+          "oklch(26% 0.0098 87.5)",
+          "oklch(38% 0.0098 87.5)",
+          "oklch(49% 0.0098 87.5)",
+          "oklch(61% 0.0098 87.5)",
+          "oklch(72% 0.0098 87.5)",
+          "oklch(84% 0.0098 87.5)",
+          "oklch(95% 0.0098 87.5)"
+        ]
+      },
+      "unknown-surface": {
+        "role": "semantic",
+        "displayName": "Uncertain Paper",
+        "tonalRamp": [
+          "oklch(15% 0.0041 121.6)",
+          "oklch(26% 0.0041 121.6)",
+          "oklch(38% 0.0041 121.6)",
+          "oklch(49% 0.0041 121.6)",
+          "oklch(61% 0.0041 121.6)",
+          "oklch(72% 0.0041 121.6)",
+          "oklch(84% 0.0041 121.6)",
+          "oklch(95% 0.0041 121.6)"
+        ]
+      },
+      "focus": {
+        "role": "semantic",
+        "displayName": "Focus Sage",
+        "tonalRamp": [
+          "oklch(15% 0.0749 173.5)",
+          "oklch(26% 0.0749 173.5)",
+          "oklch(38% 0.0749 173.5)",
+          "oklch(49% 0.0749 173.5)",
+          "oklch(61% 0.0749 173.5)",
+          "oklch(72% 0.0749 173.5)",
+          "oklch(84% 0.0749 173.5)",
+          "oklch(95% 0.0749 173.5)"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Case Heading",
+        "purpose": "Page and case titles."
+      },
+      "headline": {
+        "displayName": "Section Heading",
+        "purpose": "Workspace section titles."
+      },
+      "title": {
+        "displayName": "Local Title",
+        "purpose": "Titles inside review and form sections."
+      },
+      "body": {
+        "displayName": "Root Body",
+        "purpose": "Inherited base font size; context-specific text overrides this."
+      },
+      "evidence": {
+        "displayName": "Evidence Note",
+        "purpose": "Explanatory text under condition values."
+      },
+      "condition": {
+        "displayName": "Condition Value",
+        "purpose": "Comparable insurer findings."
+      },
+      "label": {
+        "displayName": "Button Label",
+        "purpose": "Standard action labels."
+      },
+      "premium": {
+        "displayName": "Premium",
+        "purpose": "Insurance prices with tabular numerals."
+      }
+    },
+    "shadows": [
+      {
+        "name": "dialog-lift",
+        "value": "0 16px 60px #152c2926",
+        "purpose": "Temporary modal dialogs."
+      },
+      {
+        "name": "source-drawer-lift",
+        "value": "-8px 0 55px #152c2924",
+        "purpose": "Source review over the comparison."
+      }
+    ],
+    "motion": [
+      {
+        "name": "control-transition",
+        "value": "background .15s ease, color .15s ease, border-color .15s ease",
+        "purpose": "Button state changes."
+      },
+      {
+        "name": "overlay-fade",
+        "value": "180ms ease",
+        "purpose": "Fade the modal overlay."
+      },
+      {
+        "name": "source-slide",
+        "value": "230ms cubic-bezier(.2,.8,.2,1)",
+        "purpose": "Source drawer entry from a 55px horizontal offset."
+      },
+      {
+        "name": "busy-spin",
+        "value": "900ms linear infinite",
+        "purpose": "Rotate the busy indicator."
+      },
+      {
+        "name": "reduced-motion",
+        "value": "animation:none; transition:none; scroll-behavior:auto",
+        "purpose": "Applied globally when prefers-reduced-motion is reduce."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "mobile-max",
+        "value": "800px"
+      },
+      {
+        "name": "compact-desktop-max",
+        "value": "1200px"
+      },
+      {
+        "name": "wide-desktop-min",
+        "value": "1600px"
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The decisive next action.",
+      "html": "<button class=\"ds-primary\">Предложение клиенту</button>",
+      "css": ".ds-primary{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:40px;padding:10px 14px;border:1px solid transparent;border-radius:var(--radius,8px);font-family:'Golos Text Variable',sans-serif;font-size:13px;font-weight:500;line-height:1.4;cursor:pointer;transition:background .15s ease,color .15s ease,border-color .15s ease;background:var(--teal,#246354);color:white}.ds-primary:hover:not(:disabled){background:var(--teal-hover,#194c40)}.ds-primary:focus-visible{outline:3px solid var(--focus,#559885);outline-offset:3px}.ds-primary:disabled{opacity:.45;cursor:not-allowed}@media(prefers-reduced-motion:reduce){.ds-primary{transition:none!important;animation:none!important}}"
+    },
+    {
+      "name": "Secondary Button",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "A contained secondary action.",
+      "html": "<button class=\"ds-secondary\">Новая заявка</button>",
+      "css": ".ds-secondary{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:40px;padding:10px 14px;border:1px solid transparent;border-radius:var(--radius,8px);font-family:'Golos Text Variable',sans-serif;font-size:13px;font-weight:500;line-height:1.4;cursor:pointer;transition:background .15s ease,color .15s ease,border-color .15s ease;background:white;border-color:#dce3df;color:#3e5148}.ds-secondary:hover:not(:disabled){background:#edf3ef;border-color:#c3d0c8}.ds-secondary:focus-visible{outline:3px solid var(--focus,#559885);outline-offset:3px}.ds-secondary:disabled{opacity:.45;cursor:not-allowed}@media(prefers-reduced-motion:reduce){.ds-secondary{transition:none!important;animation:none!important}}"
+    },
+    {
+      "name": "Text Action",
+      "kind": "button",
+      "refersTo": "button-text",
+      "description": "Inline progression without a filled container.",
+      "html": "<button class=\"ds-text\">Начать проверку <svg width=\"17\" height=\"17\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\" aria-hidden=\"true\"><path d=\"M4 12h16m-6-6 6 6-6 6\"/></svg></button>",
+      "css": ".ds-text{font-family:'Golos Text Variable',sans-serif;display:inline-flex;align-items:center;gap:8px;padding:7px 0;border:0;background:none;color:var(--teal,#246354);font-size:12px;font-weight:500;cursor:pointer;transition:color .15s ease}.ds-text:hover{color:#123f31}.ds-text:focus-visible{outline:3px solid var(--focus,#559885);outline-offset:3px}@media(prefers-reduced-motion:reduce){.ds-text{transition:none!important;animation:none!important}}"
+    },
+    {
+      "name": "Labeled Field",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "Editable broker input with a persistent label.",
+      "html": "<label class=\"ds-field\">Клиент<input placeholder=\"Название компании\"/></label>",
+      "css": ".ds-field{font-family:'Golos Text Variable',sans-serif;display:flex;flex-direction:column;gap:8px;font-size:13px;font-weight:500;line-height:1.6;color:var(--ink,#253635)}.ds-field input{font-family:'Golos Text Variable',sans-serif;min-height:43px;padding:11px 12px;border:1px solid #d6dfd6;border-radius:7px;background:white;color:var(--ink,#253635);font-size:14px;font-weight:400;line-height:1.7;caret-color:var(--teal,#246354)}.ds-field input::placeholder{color:#839080}.ds-field input:focus-visible{outline:3px solid var(--focus,#559885);outline-offset:3px;outline-offset:2px}@media(prefers-reduced-motion:reduce){.ds-field{transition:none!important;animation:none!important}}"
+    },
+    {
+      "name": "Workspace Navigation",
+      "kind": "nav",
+      "refersTo": "navigation",
+      "description": "Selected and resting navigation on charcoal green.",
+      "html": "<nav class=\"ds-nav\" aria-label=\"Работа\"><button class=\"ds-nav-row\">Все заявки</button><button class=\"ds-nav-row ds-selected\" aria-current=\"page\">Сравнение условий</button></nav>",
+      "css": ".ds-nav{background:var(--sidebar,#182a2b);padding:17px;border-radius:10px}.ds-nav-row{font-family:'Golos Text Variable',sans-serif;display:block;width:100%;text-align:left;min-height:43px;padding:12px 13px;margin-bottom:5px;border:0;border-radius:7px;background:transparent;color:#ccd8d1;font-size:13px;cursor:pointer;transition:background .15s ease,color .15s ease}.ds-nav-row:hover{background:#2b403d;color:white}.ds-nav-row.ds-selected{background:#324a43;color:#e9f5df}.ds-nav-row:focus-visible{outline:3px solid var(--focus,#559885);outline-offset:3px}@media(prefers-reduced-motion:reduce){.ds-nav{transition:none!important;animation:none!important}}"
+    },
+    {
+      "name": "Demo Badge",
+      "kind": "chip",
+      "refersTo": "chip",
+      "description": "An informational label for synthetic examples.",
+      "html": "<span class=\"ds-badge\">Демо</span>",
+      "css": ".ds-badge{font-family:'Golos Text Variable',sans-serif;display:inline-flex;align-items:center;font-size:10px;line-height:1.4;white-space:nowrap;border:1px solid #e2e7d5;background:#f1f4eb;color:#65714b;padding:4px 8px;border-radius:5px;letter-spacing:.1px}@media(prefers-reduced-motion:reduce){.ds-badge{transition:none!important;animation:none!important}}"
+    },
+    {
+      "name": "Requirements Container",
+      "kind": "card",
+      "refersTo": "requirements",
+      "description": "A compact summary with a visible edit action.",
+      "html": "<section class=\"ds-requirements\"><div><strong>Запрос клиента</strong><p>Имущество бизнеса · срок 12 месяцев</p></div><button>Подробнее</button></section>",
+      "css": ".ds-requirements{font-family:'Golos Text Variable',sans-serif;display:flex;gap:15px;align-items:center;background:white;border:1px solid var(--line,#e1e7e3);border-radius:10px;padding:18px 20px;color:var(--ink,#253635)}.ds-requirements strong{font-size:14px;font-weight:550}.ds-requirements p{font-size:13px;line-height:1.65;color:#596a60;margin:5px 0 0}.ds-requirements button{font-family:'Golos Text Variable',sans-serif;margin-left:auto;padding:7px 0;border:0;background:none;font-size:12px;font-weight:500;color:var(--teal,#246354);cursor:pointer}.ds-requirements button:hover{color:#123f31}.ds-requirements button:focus-visible{outline:3px solid var(--focus,#559885);outline-offset:3px}@media(prefers-reduced-motion:reduce){.ds-requirements{transition:none!important;animation:none!important}}"
+    },
+    {
+      "name": "Evidence Cell",
+      "kind": "custom",
+      "refersTo": "condition",
+      "description": "A discrepancy value, explanation and source reference in one review target.",
+      "html": "<button class=\"ds-cell\" aria-label=\"Франшиза: 1%. Есть расхождение.\"><span class=\"ds-value\"><svg width=\"17\" height=\"17\" viewBox=\"0 0 24 24\" fill=\"currentColor\" aria-hidden=\"true\"><path d=\"M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm1 15h-2v-2h2zm0-4h-2V7h2z\"/></svg><strong>1% от страховой суммы</strong></span><span class=\"ds-note\">Есть расхождение с запросом клиента.</span><span class=\"ds-source\">стр. 2</span></button>",
+      "css": ".ds-cell{font-family:'Golos Text Variable',sans-serif;display:block;width:100%;min-height:136px;padding:17px 18px 13px;border:0;background:#fffcf5;color:var(--ink,#253635);text-align:left;cursor:pointer;transition:background .15s ease}.ds-cell:hover{background:#ebf1ed88}.ds-cell:focus-visible{outline:3px solid var(--focus,#559885);outline-offset:3px}.ds-value{display:flex;gap:7px;align-items:flex-start}.ds-value svg{color:#b39550;margin-top:2px;flex-shrink:0}.ds-value strong{font-size:14px;line-height:1.55;font-weight:500;overflow-wrap:anywhere}.ds-note{display:block;font-size:13px;color:#796330;line-height:1.65;margin:7px 0 9px;padding-left:22px}.ds-source{display:block;font-size:12px;color:#5b6a60;margin-left:22px}@media(max-width:800px){.ds-cell{min-height:0;padding:10px 20px 17px}.ds-value strong{font-size:15px}.ds-note{font-size:14px}.ds-source{font-size:13px}}@media(prefers-reduced-motion:reduce){.ds-cell{transition:none!important;animation:none!important}}"
+    },
+    {
+      "name": "Mobile Offer Selector",
+      "kind": "input",
+      "description": "Selects the insurer shown in the mobile comparison.",
+      "html": "<label class=\"ds-offer\">Страховщик<select><option>Пример страховщика 1</option><option>Пример страховщика 2</option></select></label>",
+      "css": ".ds-offer{font-family:'Golos Text Variable',sans-serif;display:flex;flex-direction:column;gap:8px;font-size:13px;font-weight:500;color:var(--ink,#253635)}.ds-offer select{font-family:'Golos Text Variable',sans-serif;font-size:15px;color:var(--ink,#253635);background:white;padding:13px 12px;border:1px solid #cbd8ce;border-radius:8px;width:100%}.ds-offer select:focus-visible{outline:3px solid var(--focus,#559885);outline-offset:3px}@media(prefers-reduced-motion:reduce){.ds-offer{transition:none!important;animation:none!important}}"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Broker's Evidence Desk",
+    "overview": "Polis is a calm, precise evidence desk for Russian-language broker work. White document surfaces, dark charcoal-green navigation and restrained teal actions make dense insurance conditions readable. Golos Text carries both the interface and financial figures, with tabular numerals reserved for premiums.\n\nThe visual direction adapts the local awesome-design-md Airtable community marketing analysis for an operational table workspace. It is a community reference, not an official Airtable design system. The implementation uses flat surfaces and fine dividers; depth is reserved for temporary dialogs and source review.",
+    "keyCharacteristics": [
+      "Readable evidence, notes and source references within a compact comparison.",
+      "White surfaces, charcoal-green navigation, teal actions and a lime brand accent.",
+      "Condition status expressed through icons, text and subtle background tints.",
+      "Responsive review with one selected insurer at a time on mobile."
+    ],
+    "rules": [
+      {
+        "name": "The Evidence Rule",
+        "body": "Condition color always accompanies an icon and an explicit status meaning.",
+        "section": "colors"
+      },
+      {
+        "name": "The Working Text Rule",
+        "body": "Evidence notes and source references remain readable working content, including on mobile.",
+        "section": "typography"
+      },
+      {
+        "name": "The Temporary Depth Rule",
+        "body": "Use shadows for dialogs and source review; resting workspace surfaces rely on borders and tone.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "Do keep values, explanatory notes and source references visible together.",
+      "Do pair status color with its icon and written meaning.",
+      "Do use tabular numerals for premiums.",
+      "Do preserve the labeled insurer selector on mobile.",
+      "Do keep visible keyboard focus and respect reduced motion."
+    ],
+    "donts": [
+      "Don't use the lime brand accent as a substitute for condition status.",
+      "Don't remove discrepancy or unknown indicators when an item is marked reviewed.",
+      "Don't reduce evidence to decorative microcopy.",
+      "Don't describe the community Airtable reference as an official design system."
+    ]
+  }
+}

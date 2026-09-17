@@ -1,0 +1,37 @@
+async page => {
+ const errors=[];page.on('pageerror',e=>errors.push(e.message));
+ await page.goto('http://127.0.0.1:5175/');await page.emulateMedia({reducedMotion:'reduce'});await page.setViewportSize({width:1440,height:1000});
+ await page.evaluate(()=>document.fonts.ready);
+ await page.locator('.human-image img').scrollIntoViewIfNeeded();await page.locator('.human-image img').evaluate(img=>img.decode());await page.evaluate(()=>scrollTo(0,0));
+ await page.screenshot({path:'.impeccable/review/landing-desktop.png',fullPage:true});
+ await page.screenshot({path:'.impeccable/review/landing-hero.png'});
+ await page.getByRole('button',{name:/Франшиза, Вектор Полис/}).click();await page.getByRole('dialog').waitFor();
+ if(!(await page.locator('blockquote').textContent()).includes('800 000'))throw new Error('Wrong evidence');
+ const pdfUrl=await page.getByRole('link',{name:/Открыть PDF/}).getAttribute('href');
+ const pdf=await page.request.get('http://127.0.0.1:5175'+pdfUrl);if(pdf.status()!==200||!pdf.headers()['content-type'].includes('pdf'))throw new Error('PDF link failed');
+ await page.screenshot({path:'.impeccable/review/landing-source.png'});
+ await page.getByRole('button',{name:'Понятно',exact:true}).click();
+ await page.locator('summary').filter({hasText:'Можно ли загрузить свои документы?'}).click();
+ if(!await page.getByText(/Публичный кабинет для клиентских документов ещё не запущен/).isVisible())throw new Error('FAQ failed');
+ await page.setViewportSize({width:390,height:844});await page.evaluate(()=>scrollTo(0,0));
+ await page.screenshot({path:'.impeccable/review/landing-mobile.png',fullPage:true});
+ await page.screenshot({path:'.impeccable/review/landing-mobile-hero.png'});
+ const overflow=await page.evaluate(()=>({scroll:document.documentElement.scrollWidth,width:innerWidth}));if(overflow.scroll>overflow.width)throw new Error('Page overflow');
+ await page.getByRole('button',{name:'Открыть меню',exact:true}).click();await page.getByRole('navigation',{name:'Основная навигация'}).getByRole('link',{name:'Вопросы',exact:true}).click();
+ if(await page.getByRole('button',{name:'Закрыть меню',exact:true}).count())throw new Error('Menu did not close');
+ await page.getByRole('link',{name:'Посмотреть в деле',exact:true}).click();await page.getByRole('heading',{name:'Попробуйте Polis в работе.'}).waitFor();
+ await page.getByRole('combobox',{name:'Предложение страховщика'}).selectOption('2');
+ await page.getByRole('button',{name:/Затопление, Сфера Защита/}).click();await page.getByRole('dialog').waitFor();await page.getByRole('button',{name:'Условие проверено'}).click();
+ if(!await page.getByText('1 из 24 условий проверено',{exact:true}).isVisible())throw new Error('Review count failed');
+ await page.screenshot({path:'.impeccable/review/landing-demo-mobile.png',fullPage:true});
+ await page.setViewportSize({width:1440,height:1000});
+ await page.getByRole('checkbox',{name:'Только расхождения'}).check();if(await page.locator('tbody tr').count()!==4)throw new Error('Filter failed');await page.getByRole('checkbox',{name:'Только расхождения'}).uncheck();
+ await page.screenshot({path:'.impeccable/review/landing-demo-desktop.png',fullPage:true});
+ const downloadButton=page.getByRole('button',{name:'Скачать пример предложения'});if(await downloadButton.isEnabled())throw new Error('Review gate missing');
+ for(const name of ['Орбита Страхование','Вектор Полис','Сфера Защита'])await page.getByRole('checkbox',{name:`Я сверил все условия «${name}»`}).check();
+ await page.getByRole('textbox',{name:'Комментарий клиенту'}).fill('Проверьте исключения и подлимиты перед выбором.');
+ const wait=page.waitForEvent('download');await downloadButton.click();const download=await wait;await download.saveAs('artifacts/landing-demo-proposal.html');
+ await page.reload();if(!await page.getByText('0 из 24 условий проверено',{exact:true}).isVisible())throw new Error('Unexpected persisted state');
+ await page.goto('http://127.0.0.1:5175/');
+ return {passed:['landing render','source citation','PDF asset','FAQ','mobile navigation','CTA demo route','mobile insurer selection','condition review','issues filter','export gate','HTML download','session reset'],overflow,pageErrors:errors};
+}

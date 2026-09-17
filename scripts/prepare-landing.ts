@@ -1,0 +1,12 @@
+import fs from 'node:fs';
+import path from 'node:path';
+import {makeDemo} from '../server/demo.js';
+const publicDir=path.resolve('landing/public');
+const demoDir=path.join(publicDir,'demo');
+fs.mkdirSync(demoDir,{recursive:true});
+fs.mkdirSync(path.resolve('landing/src'),{recursive:true});
+const demo=await makeDemo(demoDir);
+fs.writeFileSync(path.resolve('landing/src/demo-data.json'),JSON.stringify(demo,null,2));
+fs.copyFileSync(path.resolve('public/favicon.svg'),path.join(publicDir,'favicon.svg'));
+fs.copyFileSync(path.resolve('landing/index.html'),path.resolve('landing/demo.html'));
+console.log('Prepared three synthetic PDFs and fictional comparison for the public demo.');
