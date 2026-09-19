@@ -2,7 +2,7 @@ name: Deploy
 
 on:
   push:
-    branches: [main]
+    branches: [main, CI/CD]
   workflow_dispatch:
 
 env:
