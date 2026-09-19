@@ -1,0 +1,91 @@
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  RELEASE_TAG: ${{ github.sha }}
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Package source
+        run: tar --exclude=.git --exclude=node_modules --exclude=dist --exclude=data --exclude='.env*' -czf polis-source.tar.gz .
+
+      - name: Upload source to EC2
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          source: polis-source.tar.gz
+          target: /opt/polis
+
+      - name: Build and restart on EC2
+        uses: appleboy/ssh-action@v1.2.2
+        env:
+          RELEASE_TAG: ${{ env.RELEASE_TAG }}
+          APP_PORT: ${{ vars.APP_PORT }}
+          APP_ORIGIN: ${{ vars.APP_ORIGIN }}
+          POSTGRES_DB: ${{ vars.POSTGRES_DB }}
+          POSTGRES_USER: ${{ vars.POSTGRES_USER }}
+          MINIO_ROOT_USER: ${{ vars.MINIO_ROOT_USER }}
+          STORAGE_BUCKET: ${{ vars.STORAGE_BUCKET }}
+          STORAGE_REGION: ${{ vars.STORAGE_REGION }}
+          AI_PROVIDER: ${{ vars.AI_PROVIDER }}
+          OPENAI_MODEL: ${{ vars.OPENAI_MODEL }}
+          GOOGLE_MODEL: ${{ vars.GOOGLE_MODEL }}
+          GOOGLE_CLOUD_PROJECT: ${{ vars.GOOGLE_CLOUD_PROJECT }}
+          GOOGLE_CLOUD_LOCATION: ${{ vars.GOOGLE_CLOUD_LOCATION }}
+          GOOGLE_VERTEX_EXPRESS: ${{ vars.GOOGLE_VERTEX_EXPRESS }}
+          AUTH_SECRET: ${{ secrets.AUTH_SECRET }}
+          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+          MINIO_ROOT_PASSWORD: ${{ secrets.MINIO_ROOT_PASSWORD }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
+          GOOGLE_ACCESS_TOKEN: ${{ secrets.GOOGLE_ACCESS_TOKEN }}
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          envs: RELEASE_TAG,APP_PORT,APP_ORIGIN,POSTGRES_DB,POSTGRES_USER,MINIO_ROOT_USER,STORAGE_BUCKET,STORAGE_REGION,AI_PROVIDER,OPENAI_MODEL,GOOGLE_MODEL,GOOGLE_CLOUD_PROJECT,GOOGLE_CLOUD_LOCATION,GOOGLE_VERTEX_EXPRESS,AUTH_SECRET,POSTGRES_PASSWORD,MINIO_ROOT_PASSWORD,OPENAI_API_KEY,GOOGLE_API_KEY,GOOGLE_ACCESS_TOKEN
+          script: |
+            set -eu
+            umask 077
+            : > /opt/polis/.env.production
+            printf '%s\n' \
+              "APP_PORT=$APP_PORT" \
+              "APP_ORIGIN=$APP_ORIGIN" \
+              "POSTGRES_DB=$POSTGRES_DB" \
+              "POSTGRES_USER=$POSTGRES_USER" \
+              "POSTGRES_PASSWORD=$POSTGRES_PASSWORD" \
+              "MINIO_ROOT_USER=$MINIO_ROOT_USER" \
+              "MINIO_ROOT_PASSWORD=$MINIO_ROOT_PASSWORD" \
+              "STORAGE_BUCKET=$STORAGE_BUCKET" \
+              "STORAGE_REGION=$STORAGE_REGION" \
+              "AI_PROVIDER=$AI_PROVIDER" \
+              "OPENAI_MODEL=$OPENAI_MODEL" \
+              "OPENAI_API_KEY=$OPENAI_API_KEY" \
+              "GOOGLE_MODEL=$GOOGLE_MODEL" \
+              "GOOGLE_API_KEY=$GOOGLE_API_KEY" \
+              "GOOGLE_ACCESS_TOKEN=$GOOGLE_ACCESS_TOKEN" \
+              "GOOGLE_CLOUD_PROJECT=$GOOGLE_CLOUD_PROJECT" \
+              "GOOGLE_CLOUD_LOCATION=$GOOGLE_CLOUD_LOCATION" \
+              "GOOGLE_VERTEX_EXPRESS=$GOOGLE_VERTEX_EXPRESS" \
+              "AUTH_SECRET=$AUTH_SECRET" >> /opt/polis/.env.production
+            mkdir -p "/opt/polis/releases/$RELEASE_TAG"
+            tar -xzf /opt/polis/polis-source.tar.gz -C "/opt/polis/releases/$RELEASE_TAG"
+            rm -f /opt/polis/polis-source.tar.gz
+            ln -sfn "/opt/polis/releases/$RELEASE_TAG" /opt/polis/current
+            cd /opt/polis/current
+            docker compose --env-file /opt/polis/.env.production -f docker-compose.prod.yaml build --pull
+            docker compose --env-file /opt/polis/.env.production -f docker-compose.prod.yaml up -d --remove-orphans
+            find /opt/polis/releases -mindepth 1 -maxdepth 1 -type d ! -name "$RELEASE_TAG" -mtime +7 -exec rm -rf {} +
+            docker image prune -af --filter "until=168h"
