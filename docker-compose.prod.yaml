@@ -47,7 +47,7 @@ services:
       minio:
         condition: service_healthy
     command: >-
-      sh -c 'npx prisma migrate deploy && (node --import tsx scripts/fetch-legal-sources.ts || echo "Legal sources fetch failed; falling back to the last successfully fetched copy, if any.") && node --import tsx server/index.ts'
+      sh -c 'npx prisma migrate deploy && (timeout 60 node --import tsx scripts/fetch-legal-sources.ts || echo "Legal sources fetch failed or timed out; falling back to the last successfully fetched copy, if any.") && node --import tsx server/index.ts'
 
   postgres:
     image: postgres:16-alpine

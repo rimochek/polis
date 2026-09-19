@@ -14,8 +14,9 @@ function parseMeta(yaml:string):SourceMeta{
  return {requisite:scalar('requisite'),title:{rus:nested('title','rus')},source:{rus:nested('source','rus')},version_date:{rus:nested('version_date','rus')}};
 }
 
-async function fetchText(url:string){const response=await fetch(url);if(!response.ok)throw new Error(`Failed to fetch ${url}: ${response.status}`);return response.text();}
-async function fetchJson<T>(url:string){const response=await fetch(url,{headers:{Accept:'application/vnd.github+json'}});if(!response.ok)throw new Error(`Failed to fetch ${url}: ${response.status}`);return response.json() as Promise<T>;}
+const fetchTimeoutMs=20000;
+async function fetchText(url:string){const response=await fetch(url,{signal:AbortSignal.timeout(fetchTimeoutMs)});if(!response.ok)throw new Error(`Failed to fetch ${url}: ${response.status}`);return response.text();}
+async function fetchJson<T>(url:string){const response=await fetch(url,{headers:{Accept:'application/vnd.github+json'},signal:AbortSignal.timeout(fetchTimeoutMs)});if(!response.ok)throw new Error(`Failed to fetch ${url}: ${response.status}`);return response.json() as Promise<T>;}
 
 async function chapterFiles(dir:string){
  const entries=await fetchJson<{name:string;type:string}[]>(`${apiBase}/${dir}/rus`);
