@@ -36,6 +36,39 @@ export type Offer = {
   cells: Record<FieldKey, Cell>;
 };
 export type Change = { offer: string; field: string; before: string; after: string };
+export const DOCUMENT_ROLES = {
+  requirements: 'Требования клиента',
+  policy: 'Полис',
+  rules: 'Правила страхования',
+  correspondence: 'Переписка',
+} as const;
+export type DocumentRole = keyof typeof DOCUMENT_ROLES;
+export type Attachment = DocumentInfo & { role: DocumentRole };
+export type ChatMessage = {
+  id: string;
+  role: 'user' | 'assistant';
+  text: string;
+  createdAt: string;
+  revision?: number;
+  sources?: Evidence[];
+  caseIds?: string[];
+  draft?: string;
+  demo?: boolean;
+};
+export type LegalArticle = {
+  id: string;
+  documentTitle: string;
+  documentRequisite: string;
+  chapterTitle: string;
+  articleNumber: string;
+  articleTitle: string;
+  text: string;
+  sourceUrl: string;
+  versionDate: string;
+};
+export type LegalCitation = Pick<LegalArticle,
+  'documentTitle' | 'articleNumber' | 'articleTitle' | 'sourceUrl' | 'versionDate'
+> & { articleId: string; excerpt: string };
 export type Case = {
   id: string;
   title: string;
@@ -51,6 +84,13 @@ export type Case = {
   selectedOfferId: string | null;
   comment: string;
   analysisSeconds: number | null;
+  attachments?: Attachment[];
+  messages?: ChatMessage[];
+  owner?: string;
+  dueDate?: string;
+  resolvedQuestions?: string[];
+  drafts?: Record<string, string>;
+  activity?: { id: string; at: string; text: string }[];
 };
 export const emptyCells = () =>
   Object.fromEntries(
@@ -71,3 +111,23 @@ export const allReviewed = (c: Case) =>
   isCurrent(c) &&
   c.offers.length >= 2 &&
   c.offers.every((o) => FIELDS.every((f) => o.cells[f.key].reviewed));
+
+export const caseQuestions = (c: Case) =>
+  c.offers.flatMap((offer) =>
+    FIELDS.filter(({ key }) => ['mismatch', 'unknown'].includes(offer.cells[key].status))
+      .map(({ key, label }) => {
+        const id = `${c.revision}:${offer.id}:${key}`;
+        return {
+          id, offerId: offer.id, offer: offer.name, field: key, title: label,
+          text: offer.cells[key].note,
+          resolved: c.resolvedQuestions?.includes(id) ?? false,
+        };
+      }),
+  );
+
+export const caseStage = (c: Case) => {
+  if (c.offers.length < 2) return 'Сбор предложений';
+  if (!isCurrent(c)) return 'Требуется анализ';
+  if (!allReviewed(c)) return 'Проверка условий';
+  return 'Сравнение проверено';
+};
