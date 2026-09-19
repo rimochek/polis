@@ -15,7 +15,14 @@ export const FIELDS: {key:FieldKey;label:string;hint:string}[] = [
 export type DocumentInfo = {id:string;name:string;pages:number;size:number;version:number;createdAt:string};
 export type Offer = {id:string;name:string;documents:DocumentInfo[];cells:Record<FieldKey,Cell>};
 export type Change = {offer:string;field:string;before:string;after:string};
-export type Case = {id:string;title:string;client:string;requirements:string;demo:boolean;createdAt:string;updatedAt:string;revision:number;analyzedRevision:number|null;offers:Offer[];changes:Change[];selectedOfferId:string|null;comment:string;analysisSeconds:number|null};
+export const DOCUMENT_ROLES={requirements:'Требования клиента',policy:'Действующий полис',rules:'Правила страхования',correspondence:'Переписка'} as const;
+export type DocumentRole=keyof typeof DOCUMENT_ROLES;
+export type Attachment=DocumentInfo & {role:DocumentRole};
+export type Activity={id:string;at:string;text:string};
+export type ChatMessage={id:string;role:'user'|'assistant';text:string;createdAt:string;revision?:number;sources?:Evidence[];caseIds?:string[];draft?:string;demo?:boolean};
+export type Case = {id:string;title:string;client:string;requirements:string;demo:boolean;createdAt:string;updatedAt:string;revision:number;analyzedRevision:number|null;offers:Offer[];changes:Change[];selectedOfferId:string|null;comment:string;analysisSeconds:number|null;attachments?:Attachment[];messages?:ChatMessage[];activity?:Activity[];resolvedQuestions?:string[];drafts?:Record<string,string>;dueDate?:string;owner?:string};
+export const caseStage=(c:Case)=>allReviewed(c)?'Проверено':isCurrent(c)?'На проверке':c.offers.length>=2?'Нужен анализ':c.offers.length?'Ждём документы':'Черновик';
+export const caseQuestions=(c:Case)=>c.offers.flatMap(o=>FIELDS.filter(f=>['mismatch','unknown'].includes(o.cells[f.key].status)).map(f=>({id:`${o.id}:${f.key}`,offerId:o.id,offer:o.name,field:f.key,title:f.label,text:o.cells[f.key].note,resolved:(c.resolvedQuestions||[]).includes(`${o.id}:${f.key}`)})));
 export const emptyCells=()=>Object.fromEntries(FIELDS.map(f=>[f.key,{value:'Не найдено в документах',status:'unknown',note:'Загрузите предложение и запустите анализ.',evidence:null,reviewed:false}])) as Record<FieldKey,Cell>;
 export const isCurrent=(c:Case)=>c.analyzedRevision===c.revision;
 export const allReviewed=(c:Case)=>isCurrent(c)&&c.offers.length>=2&&c.offers.every(o=>FIELDS.every(f=>o.cells[f.key].reviewed));

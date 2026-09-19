@@ -14,6 +14,16 @@ Create a case, enter client requirements, and upload 2–3 insurer PDF packages.
 
 Review citations in the source drawer, edit findings, and confirm review. Clarification drafts are copied, not sent. Updated documents or requirements invalidate the comparison and previous approvals. Reanalysis compares field values with the previous successful result. Export is blocked until all fields are reviewed on the current revision; unknown conditions and mismatches remain visible in the output. Download creates self-contained HTML; use Print / PDF for browser PDF output.
 
+## Workspace and assistant
+
+The main application at `/` includes clients (grouped by the client name on each case), case search and stage filters, and six case sections: overview, documents, comparison, clarifications, report and history. Owner, deadline, clarification state, saved drafts, activity and conversations persist in the local `data/` directory. Existing cases remain compatible; their past activity is not invented. Client grouping is not a separate CRM or multi-user directory.
+
+The case assistant occupies the full right edge of the desktop window with independent scrolling; on mobile it opens as a full-screen dialog. It sends only the selected case's current insurer PDFs, supplemental documents, explicit requirements, comparison and recent messages to the configured provider. Old file versions are retained locally and excluded from new chat requests. A workspace assistant receives case metadata and can link to cases, but does not receive their PDFs. Replies cannot send emails, change insurance facts or mark conditions reviewed. A proposed letter is saved only after clicking the explicit action. Chat citations are checked for document ownership and physical page bounds; quote accuracy still requires human review. Provider failures are displayed, not replaced with synthetic answers. The demo case uses visibly labelled local answers without a model request.
+
+Up to six supplemental PDFs can be added with roles: client requirements, existing policy, rules or correspondence. Each supports 1–40 pages and 12 MB. Current documents in one request have a combined 24 MB limit. Requirements-role PDFs supplement the written client request during analysis; the other documents supply context, and comparison citations must still point to the current insurer offer. Changing a role invalidates analysis and review. The latest offer versions are used for analysis; offer version history remains available. Supplemental documents currently have one version each.
+
+Open and answered clarification statuses are included in exports, without hiding uncertain coverage. Activity retains the latest 200 entries per case; chat retains the latest 100 messages (last 12 included in a model request). Drafts remain editable and should be rechecked after document changes. `/concept.html` is the separate, transient design prototype; it is no longer the only place with workspace navigation.
+
 ## Verification and limits
 
 `npm run build` type-checks and builds the UI. `npm test` checks citation bounds, incomplete responses and export gates. Browser QA uses the user's Playwright CLI installation.
