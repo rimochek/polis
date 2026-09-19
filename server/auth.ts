@@ -37,7 +37,7 @@ export function createAccessToken(user:AuthUser){
 }
 
 export function verifyAccessToken(token:string):AuthUser|null{
- const [header,payload,signature]=token.split('.');if(!header||!payload||!signature)return null;
+ const parts=token.split('.');if(parts.length!==3)return null;const [header,payload,signature]=parts;if(!header||!payload||!signature)return null;
  const expected=sign(`${header}.${payload}`);const actual=Buffer.from(signature);const wanted=Buffer.from(expected);if(actual.length!==wanted.length||!timingSafeEqual(actual,wanted))return null;
  try{const data=JSON.parse(unbase64(payload)) as {sub?:string;email?:string;exp?:number};if(!data.sub||!data.email||!data.exp||data.exp<Math.floor(Date.now()/1000))return null;return {id:data.sub,email:data.email};}catch{return null;}
 }
@@ -70,11 +70,18 @@ export const requireCsrf:RequestHandler=(req,res,next)=>{if(['GET','HEAD','OPTIO
 export async function startSession(user:AuthUser){const refreshToken=newRefreshToken();const familyId=randomBytes(18).toString('hex');await prisma.authSession.create({data:{userId:user.id,familyId,refreshTokenHash:hashRefreshToken(refreshToken),expiresAt:new Date(Date.now()+refreshLifetimeMs)}});return {refreshToken,csrfToken:newCsrfToken()};}
 
 export async function rotateSession(refreshToken:string){
- const hash=hashRefreshToken(refreshToken);const current=await prisma.authSession.findUnique({where:{refreshTokenHash:hash}});if(!current)return null;
- if(current.revokedAt||current.expiresAt<=new Date()){if(current.revokedAt&&current.replacedByTokenHash)await prisma.authSession.updateMany({where:{familyId:current.familyId,revokedAt:null},data:{revokedAt:new Date()}});return null;}
- const next=newRefreshToken();const nextHash=hashRefreshToken(next);
- await prisma.$transaction([prisma.authSession.update({where:{id:current.id},data:{revokedAt:new Date(),replacedByTokenHash:nextHash}}),prisma.authSession.create({data:{userId:current.userId,familyId:current.familyId,refreshTokenHash:nextHash,expiresAt:new Date(Date.now()+refreshLifetimeMs)}})]);
- const user=await prisma.user.findUnique({where:{id:current.userId},select:{id:true,email:true}});return user?{user,refreshToken:next,csrfToken:newCsrfToken()}:null;
+ const hash=hashRefreshToken(refreshToken);
+ const rotated=await prisma.$transaction(async tx=>{
+  const current=await tx.authSession.findUnique({where:{refreshTokenHash:hash}});if(!current)return null;
+  if(current.revokedAt||current.expiresAt<=new Date()){if(current.revokedAt&&current.replacedByTokenHash)await tx.authSession.updateMany({where:{familyId:current.familyId,revokedAt:null},data:{revokedAt:new Date()}});return null;}
+  const next=newRefreshToken();const nextHash=hashRefreshToken(next);const now=new Date();
+  const updated=await tx.authSession.updateMany({where:{id:current.id,revokedAt:null,expiresAt:{gt:now}},data:{revokedAt:now,replacedByTokenHash:nextHash}});
+  if(!updated.count)return null;
+  await tx.authSession.create({data:{userId:current.userId,familyId:current.familyId,refreshTokenHash:nextHash,expiresAt:new Date(Date.now()+refreshLifetimeMs)}});
+  const user=await tx.user.findUnique({where:{id:current.userId},select:{id:true,email:true}});
+  return user?{user,refreshToken:next}:null;
+ });
+ return rotated?{...rotated,csrfToken:newCsrfToken()}:null;
 }
 
 export async function revokeSession(refreshToken:string){const hash=hashRefreshToken(refreshToken);const current=await prisma.authSession.findUnique({where:{refreshTokenHash:hash},select:{familyId:true}});if(current)await prisma.authSession.updateMany({where:{familyId:current.familyId,revokedAt:null},data:{revokedAt:new Date()}});}

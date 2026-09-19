@@ -16,4 +16,5 @@ test('access tokens reject tampering and preserve user identity',()=>{
  const token=createAccessToken(user);
  assert.deepEqual(verifyAccessToken(token),user);
  assert.equal(verifyAccessToken(`${token}x`),null);
+ assert.equal(verifyAccessToken(`${token}.extra`),null);
 });
