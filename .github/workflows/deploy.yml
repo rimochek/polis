@@ -22,6 +22,7 @@ jobs:
           tmp_archive=$(mktemp /tmp/polis-source.XXXXXX.tar.gz)
           trap 'rm -f "$tmp_archive"' EXIT
           tar --exclude=.git --exclude=node_modules --exclude=dist --exclude=data --exclude='.env*' --exclude='polis-source.tar.gz' -czf "$tmp_archive" .
+          chmod 644 "$tmp_archive"
           mv "$tmp_archive" polis-source.tar.gz
 
       - name: Validate deployment SSH key
