@@ -8,9 +8,11 @@ GlobalWorkerOptions.workerSrc = workerUrl;
 export default function PdfPreview({
   fileId,
   page: initialPage,
+  url,
 }: {
   fileId: string;
   page: number;
+  url?: string;
 }) {
   const ref = useRef<HTMLCanvasElement>(null);
   const [page, setPage] = useState(initialPage);
@@ -27,7 +29,7 @@ export default function PdfPreview({
     setLoading(true);
     setError('');
     const task = getDocument({
-      url: `/api/documents/${fileId}`,
+      url: url ?? `/api/documents/${fileId}`,
       useSystemFonts: true,
       httpHeaders: {},
       withCredentials: true,
@@ -59,11 +61,11 @@ export default function PdfPreview({
       render?.cancel();
       void task.destroy();
     };
-  }, [fileId, page]);
+  }, [fileId, page, url]);
   return (
     <div
       className="pdf-source"
-      data-source={`/api/documents/${fileId}`}
+      data-source={url ?? `/api/documents/${fileId}`}
       data-ready={!loading && !error}
     >
       <div className="pdf-controls">
