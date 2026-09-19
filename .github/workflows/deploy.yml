@@ -110,6 +110,6 @@ jobs:
             ln -sfn "/opt/polis/releases/$RELEASE_TAG" /opt/polis/current
             cd /opt/polis/current
             docker compose --env-file /opt/polis/.env.production -f docker-compose.prod.yaml build --pull
-            docker compose --env-file /opt/polis/.env.production -f docker-compose.prod.yaml up -d --remove-orphans
+            docker compose --env-file /opt/polis/.env.production -f docker-compose.prod.yaml up -d --remove-orphans --force-recreate
             find /opt/polis/releases -mindepth 1 -maxdepth 1 -type d ! -name "$RELEASE_TAG" -mtime +7 -exec rm -rf {} +
             docker image prune -af --filter "until=168h"
