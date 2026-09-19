@@ -15,6 +15,7 @@ import {analyzeGemini,testGemini} from './gemini.js';
 import {prisma} from './db.js';
 import {createDocumentStorage,documentStorageKey} from './storage.js';
 import {clearAuthCookies,cookies,hashPassword,requireAuth,requireCsrf,revokeSession,rotateSession,setAuthCookies,startSession,verifyPassword,type AuthUser} from './auth.js';
+import {askLegalAssistant} from './legal-assistant.js';
 
 const app=express();const dataDir=path.resolve('data');fs.mkdirSync(dataDir,{recursive:true});
 const storage=createDocumentStorage();
@@ -46,6 +47,7 @@ app.post('/api/auth/refresh',wrap(async(req,res)=>{const token=cookies(req).poli
 app.post('/api/auth/logout',wrap(async(req,res)=>{const token=cookies(req).polis_refresh;if(token)await revokeSession(token);clearAuthCookies(res);res.json({ok:true});}));
 app.get('/api/auth/me',requireAuth,(req,res)=>res.json({user:req.user}));
 app.use('/api',requireAuth,requireCsrf,wrap(async(req,_res,next)=>{await authContext.run(req.user!,async()=>{const loaded=await hydrate(req.user!.id);caseContext.run({cases:loaded},next);});}));
+app.post('/api/legal/ask',wrap(async(req,res)=>{const input=z.object({question:z.string().trim().min(4).max(1000)}).parse(req.body);res.json(await askLegalAssistant(input.question));}));
 app.get('/api/config',(_req,res)=>res.json(publicAIConfig()));
 app.post('/api/config/google',wrap((req,res)=>res.json(saveGoogleConfig(req.body))));
 app.post('/api/config/test',wrap(async(_req,res)=>{const config=getAIConfig();if(config.provider!=='vertex')return res.status(400).json({error:'Сначала выберите подключение Google Cloud.'});if(!config.key)return res.status(503).json({error:'Сначала сохраните ключ или токен Google Cloud.'});res.json(await testGemini(config));}));

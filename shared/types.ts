@@ -19,3 +19,8 @@ export type Case = {id:string;title:string;client:string;requirements:string;dem
 export const emptyCells=()=>Object.fromEntries(FIELDS.map(f=>[f.key,{value:'Не найдено в документах',status:'unknown',note:'Загрузите предложение и запустите анализ.',evidence:null,reviewed:false}])) as Record<FieldKey,Cell>;
 export const isCurrent=(c:Case)=>c.analyzedRevision===c.revision;
 export const allReviewed=(c:Case)=>isCurrent(c)&&c.offers.length>=2&&c.offers.every(o=>FIELDS.every(f=>o.cells[f.key].reviewed));
+
+export type LegalArticle={id:string;documentTitle:string;documentRequisite:string;chapterTitle:string;articleNumber:string;articleTitle:string;text:string;sourceUrl:string;versionDate:string};
+export type LegalCitation={articleId:string;documentTitle:string;articleNumber:string;articleTitle:string;excerpt:string;sourceUrl:string;versionDate:string};
+export type LegalChatRole='user'|'assistant';
+export type LegalChatMessage={id:string;role:LegalChatRole;text:string;citations:LegalCitation[];createdAt:string};
