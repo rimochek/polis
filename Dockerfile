@@ -6,6 +6,7 @@ COPY . .
 RUN npx prisma generate
 
 FROM base AS backend
+RUN node --import tsx scripts/fetch-legal-sources.ts
 ENV NODE_ENV=production
 CMD ["node", "--import", "tsx", "server/index.ts"]
 

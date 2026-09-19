@@ -15,7 +15,8 @@
     "test": "node --import tsx --test tests/*.test.ts",
     "prepare:landing": "node --import tsx scripts/prepare-landing.ts",
     "dev:landing": "vite --config vite.landing.config.ts",
-    "build:landing": "npm run prepare:landing && tsc --noEmit && vite build --config vite.landing.config.ts && node --import tsx scripts/finalize-landing.ts"
+    "build:landing": "npm run prepare:landing && tsc --noEmit && vite build --config vite.landing.config.ts && node --import tsx scripts/finalize-landing.ts",
+    "legal:fetch": "tsx scripts/fetch-legal-sources.ts"
   },
   "dependencies": {
     "@fontsource-variable/golos-text": "latest",

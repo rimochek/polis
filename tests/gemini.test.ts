@@ -26,3 +26,16 @@ test('project and region cannot redirect credentials to another host',()=>{
  assert.throws(()=>vertexEndpoint({...config,location:'attacker.example'}));assert.throws(()=>vertexEndpoint({...config,project:'../../bad'}));
  assert.equal(new URL(vertexEndpoint(config)).hostname,'aiplatform.googleapis.com');
 });
+
+test('supplemental PDF roles reach Gemini without replacing the primary offer citation',async t=>{
+ const attachment={id:'requirements-pdf',name:'requirements.pdf',role:'requirements' as const,pages:1,size:12,version:1,createdAt:''};
+ t.mock.method(globalThis,'fetch',async(_url:unknown,init:RequestInit)=>{
+  const sent=JSON.parse(init.body as string);assert.equal(sent.contents[0].parts.length,4);
+  assert.equal(JSON.parse(sent.contents[0].parts[2].text).contextDocument.role,'requirements');
+  assert.match(sent.systemInstruction.parts[0].text,/primary offer PDF/);
+  const result=fields();result[0].evidence.fileId=attachment.id;
+  return new Response(JSON.stringify({candidates:[{finishReason:'STOP',content:{parts:[{text:JSON.stringify({fields:result})}]}}]}));
+ });
+ const result=await analyzeGemini(c,offer,Buffer.from('primary'),config,[{doc:attachment,pdf:Buffer.from('requirements')}]);
+ assert.equal(result.cells.premium.status,'unknown');assert.equal(result.cells.sum.evidence?.fileId,'pdf-1');
+});
