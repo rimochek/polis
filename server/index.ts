@@ -1,119 +1,690 @@
+// HTTP API composition: authenticate requests, scope case access, and coordinate storage and analysis.
 import express from 'express';
 import {workspaceRoutes} from './workspace.js';
 import multer from 'multer';
-import {AsyncLocalStorage} from 'node:async_hooks';
+import { AsyncLocalStorage } from 'node:async_hooks';
 import fs from 'node:fs';
 import path from 'node:path';
-import {randomUUID} from 'node:crypto';
-import {PDFDocument} from 'pdf-lib';
-import {z} from 'zod';
-import {FIELDS,emptyCells,allReviewed,caseQuestions,DOCUMENT_ROLES,type Attachment,type ChatMessage,type DocumentInfo,type Case,type FieldKey,type Cell} from '../shared/types.js';
-import {analyzeOffer,questionText} from './analysis.js';
-import {makeDemo} from './demo.js';
-import {makeOwnedDemo} from './demo-storage.js';
-import {getAIConfig,publicAIConfig,saveGoogleConfig} from './ai-config.js';
-import {analyzeGemini,testGemini} from './gemini.js';
-import {prisma} from './db.js';
-import {createDocumentStorage,documentStorageKey} from './storage.js';
-import {clearAuthCookies,cookies,hashPassword,requireAuth,requireCsrf,revokeSession,rotateSession,setAuthCookies,startSession,verifyPassword,type AuthUser} from './auth.js';
-import {askLegalAssistant} from './legal-assistant.js';
+import { randomUUID } from 'node:crypto';
+import { PDFDocument } from 'pdf-lib';
+import { z } from 'zod';
+import {
+  FIELDS,
+  emptyCells,
+  allReviewed,
+  type Case,
+  type FieldKey,
+  type Cell,
+} from '../shared/types.js';
+import { analyzeOffer, questionText } from './analysis.js';
+import { makeDemo } from './demo.js';
+import { makeOwnedDemo } from './demo-storage.js';
+import { getAIConfig, publicAIConfig, saveGoogleConfig } from './ai-config.js';
+import { analyzeGemini, testGemini } from './gemini.js';
+import { prisma } from './db.js';
+import { createDocumentStorage, documentStorageKey } from './storage.js';
+import {
+  clearAuthCookies,
+  cookies,
+  hashPassword,
+  requireAuth,
+  requireCsrf,
+  revokeSession,
+  rotateSession,
+  setAuthCookies,
+  startSession,
+  verifyPassword,
+  type AuthUser,
+} from './auth.js';
 
-const app=express();const dataDir=path.resolve(process.env.POLIS_DATA_DIR||'data');fs.mkdirSync(dataDir,{recursive:true});
-const storage=createDocumentStorage();
-const authContext=new AsyncLocalStorage<AuthUser>();
-const caseContext=new AsyncLocalStorage<{cases:Case[]}>();
-const busy=new Set<string>();const port=Number(process.env.POLIS_PORT||5174);const appOrigin=process.env.APP_ORIGIN?.replace(/\/$/,'');
-app.disable('x-powered-by');app.use(express.json({limit:'1mb'}));
-app.use((req,res,next)=>{const host=(req.headers.host||'').split(':')[0];if(!['127.0.0.1','localhost','backend'].includes(host))return res.status(403).json({error:'Разрешён только локальный доступ.'});const origin=req.headers.origin;const allowedOrigins=['http://127.0.0.1:5173','http://localhost:5173',`http://127.0.0.1:${port}`,appOrigin].filter(Boolean);if(origin&&!allowedOrigins.includes(origin))return res.status(403).json({error:'Источник запроса не разрешён.'});res.setHeader('X-Content-Type-Options','nosniff');res.setHeader('Cache-Control','no-store');next();});
-const persistCase=async(ownerId:string,c:Case,previousUpdatedAt?:string,db:Pick<typeof prisma,'caseRecord'>=prisma)=>{
- if(previousUpdatedAt){
-  const updated=await db.caseRecord.updateMany({where:{id:c.id,ownerId,updatedAt:new Date(previousUpdatedAt)},data:{payload:c as unknown as object,demo:c.demo,updatedAt:new Date(c.updatedAt)}});
-  if(!updated.count)throw Object.assign(new Error('Заявка была изменена в другой вкладке. Обновите страницу и повторите действие.'),{status:409});
-  return;
- }
- await db.caseRecord.upsert({where:{id:c.id},create:{id:c.id,ownerId,payload:c as unknown as object,demo:c.demo,createdAt:new Date(c.createdAt),updatedAt:new Date(c.updatedAt)},update:{payload:c as unknown as object,demo:c.demo,updatedAt:new Date(c.updatedAt)}});
+const app = express();
+const dataDir = path.resolve('data');
+fs.mkdirSync(dataDir, { recursive: true });
+const storage = createDocumentStorage();
+const authContext = new AsyncLocalStorage<AuthUser>();
+const caseContext = new AsyncLocalStorage<{ cases: Case[] }>();
+const busy = new Set<string>();
+const port = 5174;
+const appOrigin = process.env.APP_ORIGIN?.replace(/\/$/, '');
+app.disable('x-powered-by');
+app.use(express.json({ limit: '1mb' }));
+app.use((req, res, next) => {
+  const host = (req.headers.host || '').split(':')[0];
+  if (!['127.0.0.1', 'localhost', 'backend'].includes(host))
+    return res.status(403).json({ error: 'Разрешён только локальный доступ.' });
+  const origin = req.headers.origin;
+  const allowedOrigins = [
+    'http://127.0.0.1:5173',
+    'http://localhost:5173',
+    `http://127.0.0.1:${port}`,
+    appOrigin,
+  ].filter(Boolean);
+  if (origin && !allowedOrigins.includes(origin))
+    return res.status(403).json({ error: 'Источник запроса не разрешён.' });
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('Cache-Control', 'no-store');
+  next();
+});
+// Reject stale writes instead of overwriting another tab's saved case.
+const persistCase = async (ownerId: string, c: Case, previousUpdatedAt?: string) => {
+  if (previousUpdatedAt) {
+    const updated = await prisma.caseRecord.updateMany({
+      where: { id: c.id, ownerId, updatedAt: new Date(previousUpdatedAt) },
+      data: { payload: c as unknown as object, demo: c.demo, updatedAt: new Date(c.updatedAt) },
+    });
+    if (!updated.count)
+      throw Object.assign(
+        new Error('Заявка была изменена в другой вкладке. Обновите страницу и повторите действие.'),
+        { status: 409 },
+      );
+    return;
+  }
+  await prisma.caseRecord.upsert({
+    where: { id: c.id },
+    create: {
+      id: c.id,
+      ownerId,
+      payload: c as unknown as object,
+      demo: c.demo,
+      createdAt: new Date(c.createdAt),
+      updatedAt: new Date(c.updatedAt),
+    },
+    update: { payload: c as unknown as object, demo: c.demo, updatedAt: new Date(c.updatedAt) },
+  });
 };
-const hydrate=async(ownerId:string)=>{const rows=await prisma.caseRecord.findMany({where:{ownerId},orderBy:{updatedAt:'desc'}});return rows.map((row:{payload:unknown})=>row.payload as Case);};
-const currentCases=()=>caseContext.getStore()?.cases??[];
-const replaceCases=(next:Case[])=>{const state=caseContext.getStore();if(!state)throw new Error('Контекст заявок недоступен.');state.cases=next;};
-const cleanupDocuments=async(documentIds:string[])=>{const failed:string[]=[];for(const id of documentIds){try{await storage.delete(id);}catch{failed.push(id);}}if(failed.length)console.error('Storage cleanup failed for documents:',failed);};
-const getCase=(id:string)=>{const c=currentCases().find(c=>c.id===id);if(!c)throw Object.assign(new Error('Заявка не найдена.'),{status:404});return c;};
-const editable=(c:Case)=>{if(busy.has(c.id))throw Object.assign(new Error('Дождитесь окончания анализа.'),{status:409});};
-const updateCaseState=(c:Case,invalidate=false,event?:string)=>{
- c.updatedAt=new Date(Math.max(Date.now(),new Date(c.updatedAt).getTime()+1)).toISOString();
- if(invalidate){c.revision++;c.selectedOfferId=null;c.resolvedQuestions=[];for(const o of c.offers)for(const cell of Object.values(o.cells))cell.reviewed=false;}
- if(event){(c.activity??=[]).push({id:randomUUID(),at:c.updatedAt,text:event});c.activity=c.activity.slice(-200);}
+const hydrate = async (ownerId: string) => {
+  const rows = await prisma.caseRecord.findMany({
+    where: { ownerId },
+    orderBy: { updatedAt: 'desc' },
+  });
+  return rows.map((row: { payload: unknown }) => row.payload as Case);
 };
-const owner=()=>{const user=authContext.getStore();if(!user)throw Object.assign(new Error('Войдите в аккаунт.'),{status:401});return user.id;};
-const touch=async(c:Case,invalidate=false,event?:string)=>{const previousUpdatedAt=c.updatedAt;updateCaseState(c,invalidate,event);await persistCase(owner(),c,previousUpdatedAt);};
-const readDocument=async(c:Case,id:string)=>{
- const doc=await prisma.document.findFirst({where:{id,caseRecordId:c.id,caseRecord:{ownerId:owner()}}});
- if(!doc)throw Object.assign(new Error('Документ не найден в этой заявке.'),{status:404});
- return !doc.storageKey&&doc.bytes?Buffer.from(doc.bytes):await storage.get(doc.id);
+const currentCases = () => caseContext.getStore()?.cases ?? [];
+const replaceCases = (next: Case[]) => {
+  const state = caseContext.getStore();
+  if (!state) throw new Error('Контекст заявок недоступен.');
+  state.cases = next;
 };
-const saveDocument=async(c:Case,doc:DocumentInfo,bytes:Buffer,event:string)=>{
- const ownerId=owner();const previousUpdatedAt=c.updatedAt;
- updateCaseState(c,true,event);await storage.put(doc.id,bytes);
- try{await prisma.$transaction(async tx=>{
-  await tx.document.create({data:{id:doc.id,caseRecordId:c.id,name:doc.name,pages:doc.pages,size:doc.size,version:doc.version,createdAt:new Date(doc.createdAt),storageKey:documentStorageKey(doc.id),bytes}});
-  await persistCase(ownerId,c,previousUpdatedAt,tx);
- });}catch(error){await storage.delete(doc.id).catch(()=>undefined);throw error;}
+const cleanupDocuments = async (documentIds: string[]) => {
+  const failed: string[] = [];
+  for (const id of documentIds) {
+    try {
+      await storage.delete(id);
+    } catch {
+      failed.push(id);
+    }
+  }
+  if (failed.length) console.error('Storage cleanup failed for documents:', failed);
 };
-const wrap=(handler:express.RequestHandler):express.RequestHandler=>(req,res,next)=>Promise.resolve(handler(req,res,next)).catch(next);
-const demoForUser=async(ownerId:string)=>{const ownedDemo=await makeOwnedDemo(dataDir);const uploaded:string[]=[];try{const row=await prisma.caseRecord.create({data:{id:ownedDemo.id,ownerId,payload:ownedDemo as unknown as object,demo:true,createdAt:new Date(ownedDemo.createdAt),updatedAt:new Date(ownedDemo.updatedAt)}});for(const offer of ownedDemo.offers)for(const document of offer.documents){const bytes=fs.readFileSync(path.join(dataDir,`${document.id}.pdf`));await storage.put(document.id,bytes);uploaded.push(document.id);await prisma.document.create({data:{id:document.id,caseRecordId:row.id,name:document.name,pages:document.pages,size:document.size,version:document.version,createdAt:new Date(document.createdAt),storageKey:documentStorageKey(document.id),bytes}});}return ownedDemo;}catch(error){for(const id of uploaded)await storage.delete(id).catch(()=>undefined);throw error;}finally{for(const offer of ownedDemo.offers)for(const document of offer.documents)fs.rmSync(path.join(dataDir,`${document.id}.pdf`),{force:true});}};
-app.post('/api/auth/register',wrap(async(req,res)=>{const input=z.object({email:z.string().trim().toLowerCase().email().max(254),password:z.string().min(12).max(200)}).parse(req.body);if(await prisma.user.findUnique({where:{email:input.email}}))return res.status(409).json({error:'Пользователь с таким email уже зарегистрирован.'});let user;try{user=await prisma.user.create({data:{email:input.email,passwordHash:await hashPassword(input.password)}});const demo=await demoForUser(user.id);const session=await startSession({id:user.id,email:user.email});setAuthCookies(res,{id:user.id,email:user.email},session.refreshToken,session.csrfToken);res.status(201).json({user:{id:user.id,email:user.email},demo});}catch(error){if(user)await prisma.user.delete({where:{id:user.id}}).catch(()=>undefined);throw error;}}));
-app.post('/api/auth/login',wrap(async(req,res)=>{const input=z.object({email:z.string().trim().toLowerCase().email(),password:z.string().min(1).max(200)}).parse(req.body);const user=await prisma.user.findUnique({where:{email:input.email}});if(!user||!(await verifyPassword(input.password,user.passwordHash)))return res.status(401).json({error:'Неверный email или пароль.'});const session=await startSession({id:user.id,email:user.email});setAuthCookies(res,{id:user.id,email:user.email},session.refreshToken,session.csrfToken);res.json({user:{id:user.id,email:user.email}});}));
-app.post('/api/auth/refresh',wrap(async(req,res)=>{const token=cookies(req).polis_refresh;const session=token?await rotateSession(token):null;if(!session){clearAuthCookies(res);return res.status(401).json({error:'Сессия истекла. Войдите снова.'});}setAuthCookies(res,session.user,session.refreshToken,session.csrfToken);res.json({user:session.user});}));
-app.post('/api/auth/logout',wrap(async(req,res)=>{const token=cookies(req).polis_refresh;if(token)await revokeSession(token);clearAuthCookies(res);res.json({ok:true});}));
-app.get('/api/auth/me',requireAuth,(req,res)=>res.json({user:req.user}));
-app.use('/api',requireAuth,requireCsrf,wrap(async(req,_res,next)=>{await authContext.run(req.user!,async()=>{const loaded=await hydrate(req.user!.id);caseContext.run({cases:loaded},next);});}));
-// Registered only after authentication, CSRF and per-owner case hydration.
-app.use('/api',workspaceRoutes({
- owner,list:currentCases,get:getCase,editable,touch,readDocument,
- addAttachment:async(c,doc,bytes)=>{(c.attachments??=[]).push(doc);await saveDocument(c,doc,bytes,'Добавлен документ: '+DOCUMENT_ROLES[doc.role]);},
- loadMessages:async()=>{const user=await prisma.user.findUniqueOrThrow({where:{id:owner()},select:{workspaceMessages:true,workspaceRevision:true}});return {messages:user.workspaceMessages as unknown as ChatMessage[],revision:user.workspaceRevision};},
- saveMessages:async(messages,revision)=>{const result=await prisma.user.updateMany({where:{id:owner(),workspaceRevision:revision},data:{workspaceMessages:messages as unknown as object[],workspaceRevision:{increment:1}}});if(!result.count)throw Object.assign(new Error('Разговор изменился в другой вкладке. Обновите его и повторите вопрос.'),{status:409});}
-}));
-app.post('/api/legal/ask',wrap(async(req,res)=>{const input=z.object({question:z.string().trim().min(4).max(1000)}).parse(req.body);res.json(await askLegalAssistant(input.question));}));
-app.get('/api/config',(_req,res)=>res.json(publicAIConfig()));
-app.post('/api/config/google',wrap((req,res)=>res.json(saveGoogleConfig(req.body))));
-app.post('/api/config/test',wrap(async(_req,res)=>{const config=getAIConfig();if(config.provider!=='vertex')return res.status(400).json({error:'Сначала выберите подключение Google Cloud.'});if(!config.key)return res.status(503).json({error:'Сначала сохраните ключ или токен Google Cloud.'});res.json(await testGemini(config));}));
-app.get('/api/cases',(_req,res)=>res.json(currentCases()));
-app.get('/api/cases/:id',(req,res)=>res.json(getCase(req.params.id)));
-app.delete('/api/cases/:id',wrap(async(req,res)=>{const c=getCase(req.params.id as string);editable(c);if(c.demo)return res.status(400).json({error:'Демо-заявку можно только сбросить.'});replaceCases(currentCases().filter(x=>x.id!==c.id));await prisma.caseRecord.delete({where:{id:c.id}});await cleanupDocuments([...c.offers.flatMap(o=>o.documents),...(c.attachments||[])].map(d=>d.id));res.json({deleted:true});}));
-app.post('/api/cases',wrap(async(req,res)=>{const input=z.object({title:z.string().trim().min(2).max(150),client:z.string().trim().min(2).max(150),requirements:z.string().trim().min(10).max(10000)}).parse(req.body);const now=new Date().toISOString();const c:Case={...input,id:randomUUID(),demo:false,createdAt:now,updatedAt:now,revision:0,analyzedRevision:null,offers:[],changes:[],selectedOfferId:null,comment:'',analysisSeconds:null};updateCaseState(c,false,'Создана заявка');currentCases().push(c);const user=authContext.getStore();if(user)await persistCase(user.id,c);res.status(201).json(c);}));
-app.patch('/api/cases/:id',wrap(async(req,res)=>{const c=getCase(req.params.id as string);editable(c);const input=z.object({requirements:z.string().trim().min(10).max(10000).optional(),comment:z.string().max(4000).optional(),selectedOfferId:z.string().nullable().optional()}).parse(req.body);if(input.selectedOfferId&&!c.offers.some(o=>o.id===input.selectedOfferId))return res.status(400).json({error:'Предложение не найдено.'});const invalidate=input.requirements!==undefined&&input.requirements!==c.requirements;Object.assign(c,input);await touch(c,invalidate,invalidate?'Обновлены требования — анализ требует повторной проверки':'Обновлены параметры отчёта');res.json(c);}));
-app.post('/api/demo/reset',wrap(async(_req,res)=>{const old=currentCases().find(item=>item.demo);if(!old)throw Object.assign(new Error('Демо-заявка не найдена.'),{status:404});editable(old);const c=await makeOwnedDemo(dataDir);c.id=old.id;const uploaded:string[]=[];try{for(const offer of c.offers)for(const document of offer.documents){const bytes=fs.readFileSync(path.join(dataDir,`${document.id}.pdf`));await storage.put(document.id,bytes);uploaded.push(document.id);}await prisma.document.deleteMany({where:{caseRecordId:c.id}});for(const offer of c.offers)for(const document of offer.documents){const bytes=fs.readFileSync(path.join(dataDir,`${document.id}.pdf`));await prisma.document.create({data:{id:document.id,caseRecordId:c.id,name:document.name,pages:document.pages,size:document.size,version:document.version,createdAt:new Date(document.createdAt),storageKey:documentStorageKey(document.id),bytes}});}await prisma.caseRecord.update({where:{id:old.id},data:{payload:c as unknown as object,updatedAt:new Date(c.updatedAt)}});await cleanupDocuments(old.offers.flatMap(offer=>offer.documents.map(document=>document.id)));replaceCases(currentCases().map(x=>x.id===old.id?c:x));res.json(c);}catch(error){for(const id of uploaded)await storage.delete(id).catch(()=>undefined);throw error;}finally{for(const offer of c.offers)for(const document of offer.documents)fs.rmSync(path.join(dataDir,`${document.id}.pdf`),{force:true});}}));
-const upload=multer({storage:multer.memoryStorage(),limits:{fileSize:12*1024*1024,files:1}});
-app.post('/api/cases/:id/documents',upload.single('file'),wrap(async(req,res)=>{
- const c=getCase(req.params.id as string);editable(c);if(c.demo)return res.status(400).json({error:'Создайте отдельную заявку для своих документов.'});
- const file=req.file;if(!file||!file.originalname.toLowerCase().endsWith('.pdf')||!file.buffer.subarray(0,5).equals(Buffer.from('%PDF-')))return res.status(400).json({error:'Загрузите PDF размером до 12 МБ.'});
- let pdf;try{pdf=await PDFDocument.load(file.buffer);}catch{return res.status(400).json({error:'Не удалось открыть PDF. Проверьте файл и снимите пароль.'});}
- const pages=pdf.getPageCount();if(pages<1||pages>40)return res.status(400).json({error:'В первой версии поддерживаются PDF от 1 до 40 страниц.'});
- editable(c);let offer=req.body.offerId?c.offers.find(o=>o.id===req.body.offerId):undefined;
- if(req.body.offerId&&!offer)return res.status(404).json({error:'Предложение не найдено.'});
- if(!offer){if(c.offers.length>=3)return res.status(400).json({error:'В одной заявке можно сравнить до трёх страховщиков.'});const name=z.string().trim().min(2).max(120).parse(req.body.name);offer={id:randomUUID(),name,documents:[],cells:emptyCells()};c.offers.push(offer);}
- const id=randomUUID();const documentInfo={id,name:Buffer.from(file.originalname,'latin1').toString('utf8'),pages,size:file.size,version:offer.documents.length+1,createdAt:new Date().toISOString()};
- offer.documents.push(documentInfo);await saveDocument(c,documentInfo,file.buffer,'Загружено предложение: '+offer.name);res.json(c);
-}));
-app.get('/api/documents/:id',wrap(async(req,res)=>{const user=authContext.getStore();if(!user)return res.status(401).json({error:'Войдите в аккаунт.'});const doc=await prisma.document.findFirst({where:{id:req.params.id as string,caseRecord:{ownerId:user.id}}});if(!doc)return res.status(404).end();res.type('application/pdf');res.setHeader('Content-Disposition',`inline; filename="${doc.id}.pdf"`);if(!doc.storageKey&&doc.bytes){res.send(Buffer.from(doc.bytes));return;}res.send(await storage.get(doc.id));}));
-app.post('/api/cases/:id/analyze',wrap(async(req,res)=>{
- const c=getCase(req.params.id as string);editable(c);if(c.demo)return res.json(c);
- const ai=getAIConfig();if(!ai.key)return res.status(503).json({error:'Подключите Google Cloud в настройках анализа. Готовый пример доступен без ключа.'});
- if(c.offers.length<2||c.offers.some(o=>!o.documents.length))return res.status(400).json({error:'Загрузите предложения минимум двух страховщиков.'});
- if(c.offers.reduce((n,o)=>n+o.documents.at(-1)!.size,0)+(c.attachments||[]).reduce((n,d)=>n+d.size,0)>24*1024*1024)return res.status(413).json({error:'Суммарный размер актуальных PDF должен быть до 24 МБ.'});
- busy.add(c.id);const started=Date.now();try{
-  const attachments=await Promise.all((c.attachments||[]).map(async doc=>({doc,pdf:await readDocument(c,doc.id)})));
-  const results:Awaited<ReturnType<typeof analyzeOffer>>[]=[];
-  for(const o of c.offers){const pdf=await readDocument(c,o.documents.at(-1)!.id);results.push(ai.provider==='vertex'?await analyzeGemini(c,o,pdf,ai,attachments):await analyzeOffer(c,o,pdf,ai.key,ai.model,attachments));}
+const getCase = (id: string) => {
+  const c = currentCases().find((c) => c.id === id);
+  if (!c) throw Object.assign(new Error('Заявка не найдена.'), { status: 404 });
+  return c;
+};
+const editable = (c: Case) => {
+  if (busy.has(c.id))
+    throw Object.assign(new Error('Дождитесь окончания анализа.'), { status: 409 });
+};
+// A new input revision invalidates every previous review and insurer selection.
+const touch = async (c: Case, invalidate = false) => {
+  const previousUpdatedAt = c.updatedAt;
+  c.updatedAt = new Date().toISOString();
+  if (invalidate) {
+    c.revision++;
+    c.selectedOfferId = null;
+    for (const o of c.offers) for (const cell of Object.values(o.cells)) cell.reviewed = false;
+  }
+  const user = authContext.getStore();
+  if (user) await persistCase(user.id, c, previousUpdatedAt);
+};
+const wrap =
+  (handler: express.RequestHandler): express.RequestHandler =>
+  (req, res, next) =>
+    Promise.resolve(handler(req, res, next)).catch(next);
+const demoForUser = async (ownerId: string) => {
+  const ownedDemo = await makeOwnedDemo(dataDir);
+  const uploaded: string[] = [];
+  try {
+    const row = await prisma.caseRecord.create({
+      data: {
+        id: ownedDemo.id,
+        ownerId,
+        payload: ownedDemo as unknown as object,
+        demo: true,
+        createdAt: new Date(ownedDemo.createdAt),
+        updatedAt: new Date(ownedDemo.updatedAt),
+      },
+    });
+    for (const offer of ownedDemo.offers)
+      for (const document of offer.documents) {
+        const bytes = fs.readFileSync(path.join(dataDir, `${document.id}.pdf`));
+        await storage.put(document.id, bytes);
+        uploaded.push(document.id);
+        await prisma.document.create({
+          data: {
+            id: document.id,
+            caseRecordId: row.id,
+            name: document.name,
+            pages: document.pages,
+            size: document.size,
+            version: document.version,
+            createdAt: new Date(document.createdAt),
+            storageKey: documentStorageKey(document.id),
+            bytes,
+          },
+        });
+      }
+    return ownedDemo;
+  } catch (error) {
+    for (const id of uploaded) await storage.delete(id).catch(() => undefined);
+    throw error;
+  } finally {
+    for (const offer of ownedDemo.offers)
+      for (const document of offer.documents)
+        fs.rmSync(path.join(dataDir, `${document.id}.pdf`), { force: true });
+  }
+};
+app.post(
+  '/api/auth/register',
+  wrap(async (req, res) => {
+    const input = z
+      .object({
+        email: z.string().trim().toLowerCase().email().max(254),
+        password: z.string().min(12).max(200),
+      })
+      .parse(req.body);
+    if (await prisma.user.findUnique({ where: { email: input.email } }))
+      return res.status(409).json({ error: 'Пользователь с таким email уже зарегистрирован.' });
+    let user;
+    try {
+      user = await prisma.user.create({
+        data: { email: input.email, passwordHash: await hashPassword(input.password) },
+      });
+      const demo = await demoForUser(user.id);
+      const session = await startSession({ id: user.id, email: user.email });
+      setAuthCookies(
+        res,
+        { id: user.id, email: user.email },
+        session.refreshToken,
+        session.csrfToken,
+      );
+      res.status(201).json({ user: { id: user.id, email: user.email }, demo });
+    } catch (error) {
+      if (user) await prisma.user.delete({ where: { id: user.id } }).catch(() => undefined);
+      throw error;
+    }
+  }),
+);
+app.post(
+  '/api/auth/login',
+  wrap(async (req, res) => {
+    const input = z
+      .object({
+        email: z.string().trim().toLowerCase().email(),
+        password: z.string().min(1).max(200),
+      })
+      .parse(req.body);
+    const user = await prisma.user.findUnique({ where: { email: input.email } });
+    if (!user || !(await verifyPassword(input.password, user.passwordHash)))
+      return res.status(401).json({ error: 'Неверный email или пароль.' });
+    const session = await startSession({ id: user.id, email: user.email });
+    setAuthCookies(
+      res,
+      { id: user.id, email: user.email },
+      session.refreshToken,
+      session.csrfToken,
+    );
+    res.json({ user: { id: user.id, email: user.email } });
+  }),
+);
+app.post(
+  '/api/auth/refresh',
+  wrap(async (req, res) => {
+    const token = cookies(req).polis_refresh;
+    const session = token ? await rotateSession(token) : null;
+    if (!session) {
+      clearAuthCookies(res);
+      return res.status(401).json({ error: 'Сессия истекла. Войдите снова.' });
+    }
+    setAuthCookies(res, session.user, session.refreshToken, session.csrfToken);
+    res.json({ user: session.user });
+  }),
+);
+app.post(
+  '/api/auth/logout',
+  wrap(async (req, res) => {
+    const token = cookies(req).polis_refresh;
+    if (token) await revokeSession(token);
+    clearAuthCookies(res);
+    res.json({ ok: true });
+  }),
+);
+app.get('/api/auth/me', requireAuth, (req, res) => res.json({ user: req.user }));
+// Routes below this boundary require an account and load only that account's cases.
+app.use(
+  '/api',
+  requireAuth,
+  requireCsrf,
+  wrap(async (req, _res, next) => {
+    await authContext.run(req.user!, async () => {
+      const loaded = await hydrate(req.user!.id);
+      caseContext.run({ cases: loaded }, next);
+    });
+  }),
+);
+app.get('/api/config', (_req, res) => res.json(publicAIConfig()));
+app.post(
+  '/api/config/google',
+  wrap((req, res) => res.json(saveGoogleConfig(req.body))),
+);
+app.post(
+  '/api/config/test',
+  wrap(async (_req, res) => {
+    const config = getAIConfig();
+    if (config.provider !== 'vertex')
+      return res.status(400).json({ error: 'Сначала выберите подключение Google Cloud.' });
+    if (!config.key)
+      return res.status(503).json({ error: 'Сначала сохраните ключ или токен Google Cloud.' });
+    res.json(await testGemini(config));
+  }),
+);
+app.get('/api/cases', (_req, res) => res.json(currentCases()));
+app.get('/api/cases/:id', (req, res) => res.json(getCase(req.params.id)));
+app.delete(
+  '/api/cases/:id',
+  wrap(async (req, res) => {
+    const c = getCase(req.params.id as string);
+    editable(c);
+    if (c.demo) return res.status(400).json({ error: 'Демо-заявку можно только сбросить.' });
+    replaceCases(currentCases().filter((x) => x.id !== c.id));
+    await prisma.caseRecord.delete({ where: { id: c.id } });
+    for (const o of c.offers)
+      for (const doc of o.documents)
+        fs.rmSync(path.join(dataDir, `${doc.id}.pdf`), { force: true });
+    res.json({ deleted: true });
+  }),
+);
+app.post(
+  '/api/cases',
+  wrap(async (req, res) => {
+    const input = z
+      .object({
+        title: z.string().trim().min(2).max(150),
+        client: z.string().trim().min(2).max(150),
+        requirements: z.string().trim().min(10).max(10000),
+      })
+      .parse(req.body);
+    const now = new Date().toISOString();
+    const c: Case = {
+      ...input,
+      id: randomUUID(),
+      demo: false,
+      createdAt: now,
+      updatedAt: now,
+      revision: 0,
+      analyzedRevision: null,
+      offers: [],
+      changes: [],
+      selectedOfferId: null,
+      comment: '',
+      analysisSeconds: null,
+    };
+    currentCases().push(c);
+    const user = authContext.getStore();
+    if (user) await persistCase(user.id, c);
+    res.status(201).json(c);
+  }),
+);
+app.patch(
+  '/api/cases/:id',
+  wrap(async (req, res) => {
+    const c = getCase(req.params.id as string);
+    editable(c);
+    const input = z
+      .object({
+        requirements: z.string().trim().min(10).max(10000).optional(),
+        comment: z.string().max(4000).optional(),
+        selectedOfferId: z.string().nullable().optional(),
+      })
+      .parse(req.body);
+    if (input.selectedOfferId && !c.offers.some((o) => o.id === input.selectedOfferId))
+      return res.status(400).json({ error: 'Предложение не найдено.' });
+    const invalidate = input.requirements !== undefined && input.requirements !== c.requirements;
+    Object.assign(c, input);
+    await touch(c, invalidate);
+    res.json(c);
+  }),
+);
+app.post(
+  '/api/demo/reset',
+  wrap(async (_req, res) => {
+    const old = currentCases().find((item) => item.demo);
+    if (!old) throw Object.assign(new Error('Демо-заявка не найдена.'), { status: 404 });
+    editable(old);
+    const c = await makeOwnedDemo(dataDir);
+    c.id = old.id;
+    const uploaded: string[] = [];
+    try {
+      for (const offer of c.offers)
+        for (const document of offer.documents) {
+          const bytes = fs.readFileSync(path.join(dataDir, `${document.id}.pdf`));
+          await storage.put(document.id, bytes);
+          uploaded.push(document.id);
+        }
+      await prisma.document.deleteMany({ where: { caseRecordId: c.id } });
+      for (const offer of c.offers)
+        for (const document of offer.documents) {
+          const bytes = fs.readFileSync(path.join(dataDir, `${document.id}.pdf`));
+          await prisma.document.create({
+            data: {
+              id: document.id,
+              caseRecordId: c.id,
+              name: document.name,
+              pages: document.pages,
+              size: document.size,
+              version: document.version,
+              createdAt: new Date(document.createdAt),
+              storageKey: documentStorageKey(document.id),
+              bytes,
+            },
+          });
+        }
+      await prisma.caseRecord.update({
+        where: { id: old.id },
+        data: { payload: c as unknown as object, updatedAt: new Date(c.updatedAt) },
+      });
+      await cleanupDocuments(
+        old.offers.flatMap((offer) => offer.documents.map((document) => document.id)),
+      );
+      replaceCases(currentCases().map((x) => (x.id === old.id ? c : x)));
+      res.json(c);
+    } catch (error) {
+      for (const id of uploaded) await storage.delete(id).catch(() => undefined);
+      throw error;
+    } finally {
+      for (const offer of c.offers)
+        for (const document of offer.documents)
+          fs.rmSync(path.join(dataDir, `${document.id}.pdf`), { force: true });
+    }
+  }),
+);
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 12 * 1024 * 1024, files: 1 },
+});
+app.post(
+  '/api/cases/:id/documents',
+  upload.single('file'),
+  wrap(async (req, res) => {
+    const c = getCase(req.params.id as string);
+    editable(c);
+    if (c.demo)
+      return res.status(400).json({ error: 'Создайте отдельную заявку для своих документов.' });
+    const file = req.file;
+    if (
+      !file ||
+      !file.originalname.toLowerCase().endsWith('.pdf') ||
+      !file.buffer.subarray(0, 5).equals(Buffer.from('%PDF-'))
+    )
+      return res.status(400).json({ error: 'Загрузите PDF размером до 12 МБ.' });
+    let pdf;
+    try {
+      pdf = await PDFDocument.load(file.buffer);
+    } catch {
+      return res
+        .status(400)
+        .json({ error: 'Не удалось открыть PDF. Проверьте файл и снимите пароль.' });
+    }
+    const pages = pdf.getPageCount();
+    if (pages < 1 || pages > 40)
+      return res
+        .status(400)
+        .json({ error: 'В первой версии поддерживаются PDF от 1 до 40 страниц.' });
+    editable(c);
+    let offer = req.body.offerId ? c.offers.find((o) => o.id === req.body.offerId) : undefined;
+    if (req.body.offerId && !offer)
+      return res.status(404).json({ error: 'Предложение не найдено.' });
+    if (!offer) {
+      if (c.offers.length >= 3)
+        return res
+          .status(400)
+          .json({ error: 'В одной заявке можно сравнить до трёх страховщиков.' });
+      const name = z.string().trim().min(2).max(120).parse(req.body.name);
+      offer = { id: randomUUID(), name, documents: [], cells: emptyCells() };
+      c.offers.push(offer);
+    }
+    const id = randomUUID();
+    const documentName = Buffer.from(file.originalname, 'latin1').toString('utf8');
+    const documentInfo = {
+      id,
+      name: documentName,
+      pages,
+      size: file.size,
+      version: offer.documents.length + 1,
+      createdAt: new Date().toISOString(),
+    };
+    await storage.put(id, file.buffer);
+    try {
+      await prisma.document.create({
+        data: {
+          id,
+          caseRecordId: c.id,
+          name: documentName,
+          pages,
+          size: file.size,
+          version: documentInfo.version,
+          createdAt: new Date(documentInfo.createdAt),
+          storageKey: `documents/${id}.pdf`,
+          bytes: file.buffer,
+        },
+      });
+    } catch (error) {
+      await storage.delete(id).catch(() => undefined);
+      throw error;
+    }
+    offer.documents.push(documentInfo);
+    await touch(c, true);
+    res.json(c);
+  }),
+);
+app.get(
+  '/api/documents/:id',
+  wrap(async (req, res) => {
+    const user = authContext.getStore();
+    if (!user) return res.status(401).json({ error: 'Войдите в аккаунт.' });
+    const doc = await prisma.document.findFirst({
+      where: { id: req.params.id as string, caseRecord: { ownerId: user.id } },
+    });
+    if (!doc) return res.status(404).end();
+    res.type('application/pdf');
+    res.setHeader('Content-Disposition', `inline; filename="${doc.id}.pdf"`);
+    if (!doc.storageKey && doc.bytes) {
+      res.send(Buffer.from(doc.bytes));
+      return;
+    }
+    res.send(await storage.get(doc.id));
+  }),
+);
+app.post(
+  '/api/cases/:id/analyze',
+  wrap(async (req, res) => {
+    const c = getCase(req.params.id as string);
+    editable(c);
+    if (c.demo) return res.json(c);
+    const ai = getAIConfig();
+    if (!ai.key)
+      return res.status(503).json({
+        error: 'Подключите Google Cloud в настройках анализа. Готовый пример доступен без ключа.',
+      });
+    if (c.offers.length < 2 || c.offers.some((o) => !o.documents.length))
+      return res.status(400).json({ error: 'Загрузите предложения минимум двух страховщиков.' });
+    const user = authContext.getStore();
+    if (!user) return res.status(401).json({ error: 'Войдите в аккаунт.' });
+    const latestDocumentIds = c.offers.map((o) => o.documents.at(-1)!.id);
+    const documents = await prisma.document.findMany({
+      where: {
+        id: { in: latestDocumentIds },
+        caseRecordId: c.id,
+        caseRecord: { ownerId: user.id },
+      },
+      select: { id: true, bytes: true },
+    });
+    // Analysis currently depends on database bytes, even when downloads use MinIO.
+    const bytesById = new Map(
+      documents
+        .filter((document) => document.bytes)
+        .map((document) => [document.id, Buffer.from(document.bytes!)]),
+    );
+    if (latestDocumentIds.some((id) => !bytesById.has(id)))
+      return res.status(404).json({ error: 'Документ не найден. Загрузите файл снова.' });
+    busy.add(c.id);
+    const started = Date.now();
+    try {
+      const results: Awaited<ReturnType<typeof analyzeOffer>>[] = [];
+      for (const o of c.offers) {
+        const pdf = bytesById.get(o.documents.at(-1)!.id)!;
+        results.push(
+          ai.provider === 'vertex'
+            ? await analyzeGemini(c, o, pdf, ai)
+            : await analyzeOffer(c, o, pdf, ai.key, ai.model),
+        );
+      }
 
-    c.changes=[];c.offers.forEach((o,i)=>{if(c.analyzedRevision!==null)for(const f of FIELDS){const old=o.cells[f.key].value;const fresh=results[i].cells[f.key].value;if(old!==fresh)c.changes.push({offer:o.name,field:f.label,before:old,after:fresh});}o.cells=results[i].cells;});c.analyzedRevision=c.revision;c.analysisSeconds=Math.round((Date.now()-started)/1000);c.resolvedQuestions=[];await touch(c,false,'Выполнен анализ документов');res.json(c);
- }finally{busy.delete(c.id);}
-}));
-app.patch('/api/cases/:id/cells',wrap(async(req,res)=>{const c=getCase(req.params.id as string);editable(c);if(c.revision!==c.analyzedRevision)return res.status(409).json({error:'Сначала обновите анализ после изменения документов или требований.'});const input=z.object({offerId:z.string(),field:z.enum(FIELDS.map(f=>f.key) as [FieldKey,...FieldKey[]]),value:z.string().trim().min(1).max(1500),status:z.enum(['match','mismatch','unknown','neutral']),note:z.string().max(2000),reviewed:z.boolean()}).parse(req.body);const o=c.offers.find(o=>o.id===input.offerId);if(!o)return res.status(404).json({error:'Предложение не найдено.'});const old=o.cells[input.field];const edited=old.value!==input.value||old.note!==input.note||old.status!==input.status;o.cells[input.field]={value:input.value,status:input.status,note:input.note,reviewed:input.reviewed,edited:old.edited||edited,evidence:old.evidence};c.resolvedQuestions=(c.resolvedQuestions||[]).filter(id=>id!==`${o.id}:${input.field}`);await touch(c,false,'Проверено условие: '+o.name);res.json(c);}));
-app.get('/api/cases/:id/questions',(req,res)=>{const c=getCase(req.params.id);res.json(c.offers.map(o=>({offerId:o.id,name:o.name,questions:questionText(o)})));});
-app.post('/api/cases/:id/review',wrap(async(req,res)=>{const c=getCase(req.params.id as string);editable(c);if(c.revision!==c.analyzedRevision)return res.status(409).json({error:'Перед проверкой обновите анализ.'});const input=z.object({offerId:z.string(),reviewed:z.boolean()}).parse(req.body);const offer=c.offers.find(o=>o.id===input.offerId);if(!offer)return res.status(404).json({error:'Предложение не найдено.'});for(const cell of Object.values(offer.cells))cell.reviewed=input.reviewed;await touch(c,false,(input.reviewed?'Проверено предложение: ':'Снята отметка проверки: ')+offer.name);res.json(c);}));
-const esc=(s:string)=>s.replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]!));
-app.get('/api/cases/:id/export',(req,res)=>{const c=getCase(req.params.id);if(!allReviewed(c))return res.status(409).json({error:'Проверьте все условия актуального сравнения перед экспортом.'});const body=`<!doctype html><html lang="ru"><meta charset="utf-8"><title>${esc(c.title)} — страховое предложение</title><style>body{font:14px/1.5 system-ui,sans-serif;color:#182a2b;max-width:1120px;margin:40px auto;padding:24px}h1{font-size:28px}table{border-collapse:collapse;width:100%;margin:28px 0}th,td{padding:14px;border:1px solid #ccd5d2;text-align:left;vertical-align:top}small{color:#52635f}td p{margin:5px 0}header{display:flex;justify-content:space-between}mark{background:#e8f0d7}footer{margin-top:28px;border-top:1px solid #ccc;padding-top:16px}@media print{body{margin:0;padding:0}tr{break-inside:avoid}thead{display:table-header-group}}</style><header><strong>POLIS</strong><span>${c.demo?'Демонстрационный пример':'Проверено брокером'}</span></header><h1>${esc(c.title)}</h1><p>${esc(c.client)}</p><p>${esc(c.requirements)}</p>${c.demo?'<p><strong>Все компании и условия вымышлены. Не является реальным страховым предложением.</strong></p>':''}<table><thead><tr><th>Условие</th>${c.offers.map(o=>`<th>${esc(o.name)}${c.selectedOfferId===o.id?'<br><mark>Выбор брокера</mark>':''}</th>`).join('')}</tr></thead><tbody>${FIELDS.map(f=>`<tr><th>${esc(f.label)}</th>${c.offers.map(o=>{const cell=o.cells[f.key];return `<td><strong>${esc(cell.value)}</strong><p>${esc(cell.note)}</p><small>${cell.status==='mismatch'?'Есть расхождение с запросом. ':cell.status==='unknown'?'Требует уточнения. ':''}${cell.edited?'Редакция брокера. ':''}${cell.evidence?`Источник: ${esc(o.documents.find(d=>d.id===cell.evidence!.fileId)?.name??'PDF')}, стр. ${cell.evidence.page}.`:'Нет подтверждения в документах.'}</small></td>`;}).join('')}</tr>`).join('')}</tbody></table>${caseQuestions(c).length?`<h2>Уточнения</h2><ul>${caseQuestions(c).map(q=>`<li><strong>${q.resolved?'Ответ отмечен':'Открыто'}:</strong> ${esc(q.offer)} — ${esc(q.title)}. ${esc(q.text)}</li>`).join('')}</ul>`:''}${c.comment?`<h2>Комментарий брокера</h2><p>${esc(c.comment).replace(/\n/g,'<br>')}</p>`:''}<footer>Подготовлено ${new Date().toLocaleDateString('ru-RU')}. Основание — загруженные предложения и указанные источники. Окончательные условия определяются договором страховщика.</footer></html>`;res.type('html').setHeader('Content-Disposition',`attachment; filename="polis-${c.id}.html"`);res.send(body);});
-app.use((err:Error&{status?:number;code?:string},_req:express.Request,res:express.Response,_next:express.NextFunction)=>{res.status(err instanceof z.ZodError?400:err.code==='LIMIT_FILE_SIZE'?413:err.status??500).json({error:err instanceof z.ZodError?'Проверьте заполненные поля.':err.code==='LIMIT_FILE_SIZE'?'Файл больше 12 МБ. Загрузите PDF меньшего размера.':err.message||'Не удалось выполнить действие.'});});
-storage.ensureBucket().then(()=>app.listen(port,'0.0.0.0',()=>console.log(`Polis API: http://127.0.0.1:${port} | AI ${getAIConfig().key?'configured':'not configured'}`))).catch(error=>{console.error('Storage initialization failed:',error);process.exitCode=1;});
+      c.changes = [];
+      c.offers.forEach((o, i) => {
+        if (c.analyzedRevision !== null)
+          for (const f of FIELDS) {
+            const old = o.cells[f.key].value;
+            const fresh = results[i].cells[f.key].value;
+            if (old !== fresh)
+              c.changes.push({ offer: o.name, field: f.label, before: old, after: fresh });
+          }
+        o.cells = results[i].cells;
+      });
+      c.analyzedRevision = c.revision;
+      c.analysisSeconds = Math.round((Date.now() - started) / 1000);
+      await touch(c);
+      res.json(c);
+    } finally {
+      busy.delete(c.id);
+    }
+  }),
+);
+app.patch(
+  '/api/cases/:id/cells',
+  wrap(async (req, res) => {
+    const c = getCase(req.params.id as string);
+    editable(c);
+    if (c.revision !== c.analyzedRevision)
+      return res
+        .status(409)
+        .json({ error: 'Сначала обновите анализ после изменения документов или требований.' });
+    const input = z
+      .object({
+        offerId: z.string(),
+        field: z.enum(FIELDS.map((f) => f.key) as [FieldKey, ...FieldKey[]]),
+        value: z.string().trim().min(1).max(1500),
+        status: z.enum(['match', 'mismatch', 'unknown', 'neutral']),
+        note: z.string().max(2000),
+        reviewed: z.boolean(),
+      })
+      .parse(req.body);
+    const o = c.offers.find((o) => o.id === input.offerId);
+    if (!o) return res.status(404).json({ error: 'Предложение не найдено.' });
+    const old = o.cells[input.field];
+    const edited =
+      old.value !== input.value || old.note !== input.note || old.status !== input.status;
+    o.cells[input.field] = {
+      value: input.value,
+      status: input.status,
+      note: input.note,
+      reviewed: input.reviewed,
+      edited: old.edited || edited,
+      evidence: old.evidence,
+    };
+    await touch(c);
+    res.json(c);
+  }),
+);
+app.get('/api/cases/:id/questions', (req, res) => {
+  const c = getCase(req.params.id);
+  res.json(c.offers.map((o) => ({ offerId: o.id, name: o.name, questions: questionText(o) })));
+});
+app.post(
+  '/api/cases/:id/review',
+  wrap(async (req, res) => {
+    const c = getCase(req.params.id as string);
+    editable(c);
+    if (c.revision !== c.analyzedRevision)
+      return res.status(409).json({ error: 'Перед проверкой обновите анализ.' });
+    const input = z.object({ offerId: z.string(), reviewed: z.boolean() }).parse(req.body);
+    const offer = c.offers.find((o) => o.id === input.offerId);
+    if (!offer) return res.status(404).json({ error: 'Предложение не найдено.' });
+    for (const cell of Object.values(offer.cells)) cell.reviewed = input.reviewed;
+    await touch(c);
+    res.json(c);
+  }),
+);
+const esc = (s: string) =>
+  s.replace(
+    /[&<>"']/g,
+    (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char]!,
+  );
+app.get('/api/cases/:id/export', (req, res) => {
+  const c = getCase(req.params.id);
+  if (!allReviewed(c))
+    return res
+      .status(409)
+      .json({ error: 'Проверьте все условия актуального сравнения перед экспортом.' });
+  const body = `<!doctype html><html lang="ru"><meta charset="utf-8"><title>${esc(c.title)} — страховое предложение</title><style>body{font:14px/1.5 system-ui,sans-serif;color:#182a2b;max-width:1120px;margin:40px auto;padding:24px}h1{font-size:28px}table{border-collapse:collapse;width:100%;margin:28px 0}th,td{padding:14px;border:1px solid #ccd5d2;text-align:left;vertical-align:top}small{color:#52635f}td p{margin:5px 0}header{display:flex;justify-content:space-between}mark{background:#e8f0d7}footer{margin-top:28px;border-top:1px solid #ccc;padding-top:16px}@media print{body{margin:0;padding:0}tr{break-inside:avoid}thead{display:table-header-group}}</style><header><strong>POLIS</strong><span>${c.demo ? 'Демонстрационный пример' : 'Проверено брокером'}</span></header><h1>${esc(c.title)}</h1><p>${esc(c.client)}</p><p>${esc(c.requirements)}</p>${c.demo ? '<p><strong>Все компании и условия вымышлены. Не является реальным страховым предложением.</strong></p>' : ''}<table><thead><tr><th>Условие</th>${c.offers.map((o) => `<th>${esc(o.name)}${c.selectedOfferId === o.id ? '<br><mark>Выбор брокера</mark>' : ''}</th>`).join('')}</tr></thead><tbody>${FIELDS.map(
+    (f) =>
+      `<tr><th>${esc(f.label)}</th>${c.offers
+        .map((o) => {
+          const cell = o.cells[f.key];
+          return `<td><strong>${esc(cell.value)}</strong><p>${esc(cell.note)}</p><small>${cell.status === 'mismatch' ? 'Есть расхождение с запросом. ' : cell.status === 'unknown' ? 'Требует уточнения. ' : ''}${cell.edited ? 'Редакция брокера. ' : ''}${cell.evidence ? `Источник: ${esc(o.documents.find((d) => d.id === cell.evidence!.fileId)?.name ?? 'PDF')}, стр. ${cell.evidence.page}.` : 'Нет подтверждения в документах.'}</small></td>`;
+        })
+        .join('')}</tr>`,
+  ).join(
+    '',
+  )}</tbody></table>${c.comment ? `<h2>Комментарий брокера</h2><p>${esc(c.comment).replace(/\n/g, '<br>')}</p>` : ''}<footer>Подготовлено ${new Date().toLocaleDateString('ru-RU')}. Основание — загруженные предложения и указанные источники. Окончательные условия определяются договором страховщика.</footer></html>`;
+  res.type('html').setHeader('Content-Disposition', `attachment; filename="polis-${c.id}.html"`);
+  res.send(body);
+});
+app.use(
+  (
+    err: Error & { status?: number; code?: string },
+    _req: express.Request,
+    res: express.Response,
+    _next: express.NextFunction,
+  ) => {
+    res
+      .status(
+        err instanceof z.ZodError
+          ? 400
+          : err.code === 'LIMIT_FILE_SIZE'
+            ? 413
+            : (err.status ?? 500),
+      )
+      .json({
+        error:
+          err instanceof z.ZodError
+            ? 'Проверьте заполненные поля.'
+            : err.code === 'LIMIT_FILE_SIZE'
+              ? 'Файл больше 12 МБ. Загрузите PDF меньшего размера.'
+              : err.message || 'Не удалось выполнить действие.',
+      });
+  },
+);
+storage
+  .ensureBucket()
+  .then(() =>
+    app.listen(port, '0.0.0.0', () =>
+      console.log(
+        `Polis API: http://127.0.0.1:${port} | AI ${getAIConfig().key ? 'configured' : 'not configured'}`,
+      ),
+    ),
+  )
+  .catch((error) => {
+    console.error('Storage initialization failed:', error);
+    process.exitCode = 1;
+  });

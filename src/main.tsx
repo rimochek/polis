@@ -1,6 +1,11 @@
+// Mount the workspace under StrictMode to expose unsafe development lifecycle behavior.
 import React from 'react';
-import {createRoot} from 'react-dom/client';
+import { createRoot } from 'react-dom/client';
 import '@fontsource-variable/golos-text';
 import './styles.css';
 import App from './App';
-createRoot(document.getElementById('root')!).render(<React.StrictMode><App/></React.StrictMode>);
+createRoot(document.getElementById('root')!).render(
+  <React.StrictMode>
+    <App />
+  </React.StrictMode>,
+);

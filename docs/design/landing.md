@@ -2,48 +2,48 @@
 name: Polis public landing
 description: A public introduction and working synthetic comparison in the existing Polis identity.
 colors:
-  primary: "#246354"
-  primary-hover: "#194c40"
-  ink: "#182a2b"
-  lime: "#d6edbd"
-  muted: "#5c6a60"
-  paper: "#ffffff"
-  divider: "#dce4dd"
+  primary: '#246354'
+  primary-hover: '#194c40'
+  ink: '#182a2b'
+  lime: '#d6edbd'
+  muted: '#5c6a60'
+  paper: '#ffffff'
+  divider: '#dce4dd'
 typography:
   display:
     fontFamily: "'Golos Text Variable', sans-serif"
-    fontSize: "clamp(52px,4.85vw,72px)"
+    fontSize: 'clamp(52px,4.85vw,72px)'
     fontWeight: 500
     lineHeight: 1.07
-    letterSpacing: "-0.04em"
+    letterSpacing: '-0.04em'
   headline:
     fontFamily: "'Golos Text Variable', sans-serif"
-    fontSize: "45px"
+    fontSize: '45px'
     fontWeight: 450
     lineHeight: 1.15
-    letterSpacing: "-0.035em"
+    letterSpacing: '-0.035em'
   body:
     fontFamily: "'Golos Text Variable', sans-serif"
-    fontSize: "16px"
+    fontSize: '16px'
     fontWeight: 400
   label:
     fontFamily: "'Golos Text Variable', sans-serif"
-    fontSize: "14px"
+    fontSize: '14px'
     fontWeight: 500
     lineHeight: 1.4
 rounded:
-  control: "7px"
-  comparison: "12px"
-  stage: "18px"
+  control: '7px'
+  comparison: '12px'
+  stage: '18px'
 components:
   button-primary:
-    backgroundColor: "{colors.primary}"
-    textColor: "{colors.paper}"
-    typography: "{typography.label}"
-    rounded: "{rounded.control}"
-    padding: "16px 24px"
+    backgroundColor: '{colors.primary}'
+    textColor: '{colors.paper}'
+    typography: '{typography.label}'
+    rounded: '{rounded.control}'
+    padding: '16px 24px'
   button-primary-hover:
-    backgroundColor: "{colors.primary-hover}"
+    backgroundColor: '{colors.primary-hover}'
 ---
 
 # Design System: Polis public landing
@@ -52,7 +52,7 @@ components:
 
 **Creative North Star: "The Broker's Evidence Desk"**
 
-This surface extends the identity recorded in the root `DESIGN.md`. Golos Text, forest ink, teal actions, soft lime and readable document surfaces carry into a more spacious public introduction. The root design document and `.impeccable/design.json` remain the authority for the operational workspace; this file records landing-specific implementation in `src/main.tsx` and `src/style.css`.
+This surface extends the identity recorded in `docs/design/workspace.md`. Golos Text, forest ink, teal actions, soft lime and readable document surfaces carry into a more spacious public introduction. The workspace design document and `.impeccable/design.json` remain the authority for the operational workspace; this file records landing-specific implementation in `landing/src/main.tsx` and `landing/src/style.css`.
 
 The composition is code-led and inherited from the established identity. The local Airtable community design reference informed restrained editorial composition; it is not an official Airtable specification. No screenshot comp was approved, and no new visual identity or user-selected comp is claimed. Page strategy is recorded in `../.impeccable/landing-surface.md`.
 
