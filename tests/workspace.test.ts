@@ -1,39 +1,64 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import fs from 'node:fs';
-import os from 'node:os';
-import path from 'node:path';
-import net from 'node:net';
-import {spawn,type ChildProcess} from 'node:child_process';
+import express from 'express';
+import {AsyncLocalStorage} from 'node:async_hooks';
 import {once} from 'node:events';
-import {caseQuestions,FIELDS,type Case} from '../shared/types.js';
+import {PDFDocument} from 'pdf-lib';
+import {createAccessToken,requireAuth,requireCsrf} from '../server/auth.js';
+import {workspaceRoutes,type WorkspaceStore} from '../server/workspace.js';
+import {emptyCells,caseQuestions,FIELDS,isCurrent,type Case,type ChatMessage} from '../shared/types.js';
 
-test('workspace API persists chat, questions, drafts and history; changes invalidate review',async t=>{
- const dataDir=fs.mkdtempSync(path.join(os.tmpdir(),'polis-workspace-'));
- const server=net.createServer();server.listen(0,'127.0.0.1');await once(server,'listening');const port=(server.address() as net.AddressInfo).port;await new Promise<void>(resolve=>server.close(()=>resolve()));
- let child:ChildProcess|undefined;
- async function start(){child=spawn(process.execPath,['--import','tsx','server/index.ts'],{cwd:process.cwd(),env:{...process.env,POLIS_DATA_DIR:dataDir,POLIS_PORT:String(port)},stdio:['ignore','pipe','pipe'],windowsHide:true});await new Promise<void>((resolve,reject)=>{const timer=setTimeout(()=>reject(new Error('Test server startup timed out')),20000);child!.stdout!.on('data',chunk=>{if(String(chunk).includes('Polis API')){clearTimeout(timer);resolve();}});child!.on('exit',code=>{clearTimeout(timer);reject(new Error(`Test server exited ${code}`));});});}
- async function stop(){if(child&&child.exitCode===null){const ended=once(child,'exit');child.kill();await ended;}}
- t.after(async()=>{await stop();const checked=path.resolve(dataDir);if(path.dirname(checked)===path.resolve(os.tmpdir())&&path.basename(checked).startsWith('polis-workspace-'))fs.rmSync(checked,{recursive:true,force:true});});
- async function request(route:string,method='GET',body?:unknown){const r=await fetch(`http://127.0.0.1:${port}/api${route}`,{method,...(body?{headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}:{})});return {r,data:await r.json()};}
- await start();let c=(await request('/cases/demo')).data as Case;const q=caseQuestions(c)[0];
- assert.equal((await request('/cases/demo/export')).r.status,409);
- c=(await request('/cases/demo/details','PATCH',{owner:'QA broker',dueDate:'2026-10-01'})).data;
- c=(await request('/cases/demo/clarifications','PATCH',{questionId:q.id,resolved:true})).data;assert.ok(c.resolvedQuestions?.includes(q.id));
- assert.equal((await request('/cases/demo/clarifications','PATCH',{questionId:'other-case:water',resolved:true})).r.status,404);
- await request('/cases/demo/drafts','PUT',{offerId:'assistant',text:'Persisted draft'});
- const chat=await request('/cases/demo/chat','POST',{message:'Что нужно проверить?'});assert.equal(chat.r.status,200);assert.equal(chat.data.length,2);assert.match(chat.data[1].text,/Учебный ответ/);
- for(const o of c.offers)await request('/cases/demo/review','POST',{offerId:o.id,reviewed:true});
- const exportResult=await fetch(`http://127.0.0.1:${port}/api/cases/demo/export`);assert.equal(exportResult.status,200);assert.match(await exportResult.text(),/Ответ отмечен/);
- await stop();await start();c=(await request('/cases/demo')).data;
- assert.equal(c.owner,'QA broker');assert.equal(c.drafts?.assistant,'Persisted draft');assert.equal(c.messages?.length,2);assert.ok(c.activity?.length);
- c=(await request('/cases/demo','PATCH',{requirements:'Новые требования клиента, страховая сумма 90 млн тенге.'})).data;
- assert.deepEqual(c.resolvedQuestions,[]);assert.ok(c.offers.every(o=>FIELDS.every(f=>!o.cells[f.key].reviewed)));assert.notEqual(c.revision,c.analyzedRevision);assert.equal((await request('/cases/demo/export')).r.status,409);
- const created=(await request('/cases','POST',{title:'QA created',client:'QA company',requirements:'Страхование имущества магазина на год'})).data as Case;
- const form=new FormData();form.append('role','requirements');form.append('file',new Blob([fs.readFileSync(path.join(dataDir,'demo-1.pdf'))],{type:'application/pdf'}),'requirements.pdf');
- const uploaded=await fetch(`http://127.0.0.1:${port}/api/cases/${created.id}/attachments`,{method:'POST',body:form});assert.equal(uploaded.status,200);const updated=await uploaded.json() as Case;assert.equal(updated.attachments?.[0].role,'requirements');assert.equal(updated.revision,1);
- const doc=updated.attachments![0];assert.equal((await fetch(`http://127.0.0.1:${port}/api/documents/${doc.id}`)).status,200);
- assert.equal((await request(`/cases/${created.id}/attachments/${doc.id}`,'PATCH',{role:'rules'})).data.revision,2);
- assert.equal((await request(`/cases/${created.id}/attachments/${doc.id}`,'PATCH',{role:'invalid'})).r.status,400);
- assert.deepEqual((await request(`/cases/${created.id}/chat`)).data,[]);
+// Actual protected router, async owner-scoped adapter; no external DB or cloud.
+test('workspace routes enforce owner/CSRF boundaries and await persistence',async t=>{
+ process.env.AUTH_SECRET='workspace-integration-test-secret-at-least-32-chars';
+ const fixture=(id:string):Case=>({id,title:'Учебная заявка',client:'Test client',requirements:'Страхование имущества на год',demo:true,revision:0,analyzedRevision:0,offers:[{id:'offer',name:'Страховщик',documents:[],cells:emptyCells()}],changes:[],selectedOfferId:null,comment:'',analysisSeconds:null,createdAt:new Date().toISOString(),updatedAt:new Date().toISOString()});
+ const db=new Map([['a',[fixture('case-a')]],['b',[fixture('case-b')]]]);
+ const conversations=new Map<string,{messages:ChatMessage[];revision:number}>([['a',{messages:[{id:'private-a',role:'user',text:'Account A private chat',createdAt:''}],revision:1}],['b',{messages:[],revision:0}]]);
+ const context=new AsyncLocalStorage<{owner:string;cases:Case[]}>();let failSave=false;
+ const ctx=()=>context.getStore()!;const docs=new Map<string,{owner:string;bytes:Buffer}>();
+ const touch:WorkspaceStore['touch']=async(c,invalidate,event)=>{
+  await new Promise(r=>setTimeout(r,20));
+  if(failSave)throw Object.assign(new Error('Persistence unavailable'),{status:503});
+  const stored=db.get(ctx().owner)!.find(item=>item.id===c.id)!;
+  if(stored.updatedAt!==c.updatedAt)throw Object.assign(new Error('Concurrent update'),{status:409});
+  c.updatedAt=new Date(new Date(c.updatedAt).getTime()+1).toISOString();
+  if(invalidate){c.revision++;c.resolvedQuestions=[];for(const o of c.offers)for(const cell of Object.values(o.cells))cell.reviewed=false;}
+  if(event)(c.activity??=[]).push({id:'event',at:c.updatedAt,text:event});
+  db.set(ctx().owner,db.get(ctx().owner)!.map(item=>item.id===c.id?structuredClone(c):item));
+ };
+ const store:WorkspaceStore={owner:()=>ctx().owner,list:()=>ctx().cases,get:id=>{const c=ctx().cases.find(c=>c.id===id);if(!c)throw Object.assign(new Error('Case not found'),{status:404});return c;},editable:()=>{},touch,
+  readDocument:async(c,id)=>{const doc=docs.get(id);if(!doc||doc.owner!==ctx().owner||!c.attachments?.some(d=>d.id===id))throw Error('Foreign document');return doc.bytes;},
+  addAttachment:async(c,doc,bytes)=>{(c.attachments??=[]).push(doc);await touch(c,true,'Uploaded');docs.set(doc.id,{owner:ctx().owner,bytes});},
+  loadMessages:async()=>structuredClone(conversations.get(ctx().owner)!),
+  saveMessages:async(messages,revision)=>{if(conversations.get(ctx().owner)!.revision!==revision)throw Object.assign(new Error('Concurrent conversation'),{status:409});conversations.set(ctx().owner,{messages,revision:revision+1});}
+ };
+ const app=express();app.use(express.json());app.use('/api',requireAuth,requireCsrf,(req,_res,next)=>context.run({owner:req.user!.id,cases:structuredClone(db.get(req.user!.id)!)},next));app.use('/api',workspaceRoutes(store));
+ app.use((error:Error&{status?:number},_req:express.Request,res:express.Response,_next:express.NextFunction)=>res.status(error.status||400).json({error:error.message}));
+ const server=app.listen(0,'127.0.0.1');await once(server,'listening');t.after(()=>new Promise<void>((resolve,reject)=>server.close(e=>e?reject(e):resolve())));
+ const port=(server.address() as {port:number}).port;
+ const tokens={a:createAccessToken({id:'a',email:'a@example.test'}),b:createAccessToken({id:'b',email:'b@example.test'})};
+ async function request(owner:'a'|'b'|null,route:string,method='GET',body?:unknown,csrf=true){
+  const headers:Record<string,string>={};if(owner){headers.Cookie=`polis_access=${tokens[owner]}; polis_csrf=test-csrf`;if(csrf)headers['X-CSRF-Token']='test-csrf';}
+  if(body&&!(body instanceof FormData))headers['Content-Type']='application/json';
+  const response=await fetch(`http://127.0.0.1:${port}/api${route}`,{method,headers,body:body instanceof FormData?body:body?JSON.stringify(body):undefined});return {status:response.status,data:await response.json()};
+ }
+ assert.equal((await request(null,'/chat')).status,401);
+ assert.equal((await request('b','/cases/case-a/chat')).status,404);
+ assert.deepEqual((await request('b','/chat')).data,[]);
+ assert.equal((await request('a','/chat')).data[0].text,'Account A private chat');
+ assert.equal((await request('a','/cases/case-a/details','PATCH',{owner:'Broker',dueDate:''},false)).status,403);
+ const saved=await request('a','/cases/case-a/details','PATCH',{owner:'Broker A',dueDate:'2026-10-01'});assert.equal(saved.status,200);assert.equal(db.get('a')![0].owner,'Broker A');assert.equal(db.get('b')![0].owner,undefined);
+ const q=caseQuestions(db.get('a')![0])[0];await request('a','/cases/case-a/clarifications','PATCH',{questionId:q.id,resolved:true});assert.ok(db.get('a')![0].resolvedQuestions?.includes(q.id));
+ assert.equal((await request('b','/cases/case-a/clarifications','PATCH',{questionId:q.id,resolved:true})).status,404);
+ await request('a','/cases/case-a/drafts','PUT',{offerId:'assistant',text:'Saved draft'});assert.equal(db.get('a')![0].drafts?.assistant,'Saved draft');
+ const chat=await request('a','/cases/case-a/chat','POST',{message:'Что нужно проверить?'});assert.equal(chat.status,200);assert.equal(db.get('a')![0].messages?.length,2);assert.match(chat.data[1].text,/Учебный ответ/);
+ assert.equal((await request('a','/cases/case-a/chat')).data.length,2);assert.deepEqual((await request('b','/cases/case-b/chat')).data,[]);
+ failSave=true;const failed=await request('a','/cases/case-a/drafts','PUT',{offerId:'assistant',text:'Must not persist'});assert.equal(failed.status,503);assert.equal(db.get('a')![0].drafts?.assistant,'Saved draft');failSave=false;
+ const races=await Promise.all([request('a','/cases/case-a/details','PATCH',{owner:'First',dueDate:''}),request('a','/cases/case-a/details','PATCH',{owner:'Second',dueDate:''})]);assert.deepEqual(races.map(r=>r.status).sort(),[200,409]);
+ db.get('a')![0].demo=false;for(const f of FIELDS)db.get('a')![0].offers[0].cells[f.key].reviewed=true;
+ const pdf=await PDFDocument.create();pdf.addPage();const bytes=await pdf.save();const form=new FormData();form.append('role','requirements');form.append('file',new Blob([Buffer.from(bytes)],{type:'application/pdf'}),'requirements.pdf');
+ const upload=await request('a','/cases/case-a/attachments','POST',form);assert.equal(upload.status,200);const doc=upload.data.attachments[0];assert.equal(docs.get(doc.id)?.owner,'a');assert.ok(!isCurrent(db.get('a')![0]));assert.deepEqual(db.get('a')![0].resolvedQuestions,[]);assert.ok(FIELDS.every(f=>!db.get('a')![0].offers[0].cells[f.key].reviewed));
+ assert.equal((await request('b',`/cases/case-a/attachments/${doc.id}`,'PATCH',{role:'rules'})).status,404);
+ assert.equal((await request('a',`/cases/case-a/attachments/${doc.id}`,'PATCH',{role:'rules'})).data.attachments[0].role,'rules');
+ assert.equal((await request('a','/cases/case-a/clarifications','PATCH',{questionId:q.id,resolved:true})).status,409);
 });

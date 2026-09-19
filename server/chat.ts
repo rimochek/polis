@@ -1,6 +1,4 @@
 import {randomUUID} from 'node:crypto';
-import fs from 'node:fs';
-import path from 'node:path';
 import {z} from 'zod';
 import {FIELDS,caseStage,caseQuestions,isCurrent,type Case,type ChatMessage,type Evidence} from '../shared/types.js';
 import {callGemini} from './gemini.js';
@@ -26,7 +24,7 @@ export function demoReply(c:Case,text:string):Pick<ChatMessage,'text'|'sources'|
  const sources:Evidence[]=[];const lines=rows.map(({o,f,cell})=>{if(cell.evidence&&!sources.some(s=>s.fileId===cell.evidence!.fileId&&s.page===cell.evidence!.page&&s.text===cell.evidence!.text))sources.push(cell.evidence);return `${o.name} — ${f.label}: ${cell.value}. ${cell.note}`;});
  return {text:'Учебный ответ по сохранённому сравнению; запрос к модели не выполнялся.\n\n'+(lines.join('\n\n')||'Нет отмеченных расхождений. Можно открыть документы и проверить исходные условия.'),sources:sources.slice(0,12)};
 }
-export async function answerChat({c,cases,history,text,dataDir,config=getAIConfig()}:{c?:Case;cases:Case[];history:ChatMessage[];text:string;dataDir:string;config?:ReturnType<typeof getAIConfig>}){
+export async function answerChat({c,cases,history,text,readDocument,config=getAIConfig()}:{c?:Case;cases:Case[];history:ChatMessage[];text:string;readDocument:(id:string)=>Promise<Buffer>;config?:ReturnType<typeof getAIConfig>}){
  if(c?.demo)return demoReply(c,text);
  if(!config.key)throw Object.assign(new Error('Подключите модель в настройках анализа. Чат учебной заявки доступен без ключа.'),{status:503});
  const context=c?{scope:'one_case',id:c.id,title:c.title,client:c.client,requirements:c.requirements,revision:c.revision,analysisCurrent:isCurrent(c),offers:c.offers.map(o=>({id:o.id,name:o.name,cells:o.cells,document:o.documents.at(-1)})),attachments:c.attachments||[],questions:caseQuestions(c),drafts:c.drafts||{}}:{scope:'workspace_directory',cases:cases.map(item=>({id:item.id,title:item.title,client:item.client,stage:caseStage(item),dueDate:item.dueDate,owner:item.owner,demo:item.demo,openQuestions:isCurrent(item)?caseQuestions(item).filter(q=>!q.resolved).length:null}))};
@@ -37,12 +35,12 @@ export async function answerChat({c,cases,history,text,dataDir,config=getAIConfi
  let raw='';
  if(config.provider==='vertex'){
   const parts:unknown[]=[{text:payload}];
-  for(const d of docs)parts.push({text:JSON.stringify({fileId:d.id,name:d.name,pageCount:d.pages})},{inlineData:{mimeType:'application/pdf',data:fs.readFileSync(path.join(dataDir,`${d.id}.pdf`)).toString('base64')}});
+  for(const d of docs)parts.push({text:JSON.stringify({fileId:d.id,name:d.name,pageCount:d.pages})},{inlineData:{mimeType:'application/pdf',data:(await readDocument(d.id)).toString('base64')}});
   const result=await callGemini(config,{systemInstruction:{parts:[{text:instruction}]},contents:[{role:'user',parts}],generationConfig:{responseMimeType:'application/json',maxOutputTokens:8192}});
   const candidate=result.candidates?.[0];if(candidate?.finishReason!=='STOP')throw new Error('Модель не завершила ответ. Попробуйте более короткий вопрос.');
   raw=candidate.content?.parts?.filter(p=>!p.thought).map(p=>p.text||'').join('')||'';
  }else{
-  const content:unknown[]=[{type:'input_text',text:payload},...docs.map(d=>({type:'input_file',filename:d.name,file_data:`data:application/pdf;base64,${fs.readFileSync(path.join(dataDir,`${d.id}.pdf`)).toString('base64')}`}))];
+  const content:unknown[]=[{type:'input_text',text:payload},...await Promise.all(docs.map(async d=>({type:'input_file',filename:d.name,file_data:`data:application/pdf;base64,${(await readDocument(d.id)).toString('base64')}`})) )];
   const response=await fetch('https://api.openai.com/v1/responses',{method:'POST',headers:{Authorization:`Bearer ${config.key}`,'Content-Type':'application/json'},signal:AbortSignal.timeout(180000),body:JSON.stringify({model:config.model,store:false,instructions:instruction,input:[{role:'user',content}],text:{format:{type:'json_object'}},max_output_tokens:8192})});
   if(!response.ok)throw new Error(`Сервис чата вернул ошибку ${response.status}. Проверьте подключение модели в настройках.`);
   const result=await response.json() as {status:string;output?:{content?:{type:string;text?:string}[]}[]};

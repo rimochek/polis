@@ -1,0 +1,64 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String        @id @default(cuid())
+  email        String        @unique
+  passwordHash String
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  sessions     AuthSession[]
+  cases        CaseRecord[]
+  workspaceMessages Json     @default("[]")
+  workspaceRevision Int      @default(0)
+}
+
+model AuthSession {
+  id                  String    @id @default(cuid())
+  userId              String
+  familyId            String
+  refreshTokenHash    String    @unique
+  expiresAt           DateTime
+  createdAt           DateTime  @default(now())
+  revokedAt           DateTime?
+  replacedByTokenHash String?
+  user                User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([familyId])
+  @@index([expiresAt])
+}
+
+model CaseRecord {
+  id        String     @id
+  ownerId   String
+  payload   Json
+  demo      Boolean    @default(false)
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  owner     User       @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  documents Document[]
+
+  @@index([ownerId, updatedAt])
+}
+
+model Document {
+  id           String     @id
+  caseRecordId String
+  name         String
+  pages        Int
+  size         Int
+  version      Int
+  createdAt    DateTime   @default(now())
+  storageKey   String?
+  bytes        Bytes?
+  caseRecord   CaseRecord @relation(fields: [caseRecordId], references: [id], onDelete: Cascade)
+
+  @@index([caseRecordId])
+}

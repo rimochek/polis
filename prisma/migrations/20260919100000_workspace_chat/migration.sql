@@ -1,0 +1,3 @@
+ALTER TABLE "User"
+ADD COLUMN "workspaceMessages" JSONB NOT NULL DEFAULT '[]',
+ADD COLUMN "workspaceRevision" INTEGER NOT NULL DEFAULT 0;

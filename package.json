@@ -7,19 +7,26 @@
     "dev": "concurrently -k \"npm:server\" \"npm:client\"",
     "server": "node --env-file-if-exists=.env --import tsx server/index.ts",
     "client": "vite --host 127.0.0.1",
+    "db:generate": "prisma generate",
+    "db:migrate": "prisma migrate dev",
+    "db:seed": "tsx prisma/seed.ts",
+    "storage:backfill": "tsx scripts/backfill-document-storage.ts",
     "build": "tsc --noEmit && vite build",
     "test": "node --import tsx --test tests/*.test.ts",
     "prepare:landing": "node --import tsx scripts/prepare-landing.ts",
     "dev:landing": "vite --config vite.landing.config.ts",
-    "build:landing": "npm run prepare:landing && tsc --noEmit && vite build --config vite.landing.config.ts && node --import tsx scripts/finalize-landing.ts"
+    "build:landing": "npm run prepare:landing && tsc --noEmit && vite build --config vite.landing.config.ts && node --import tsx scripts/finalize-landing.ts",
+    "legal:fetch": "tsx scripts/fetch-legal-sources.ts"
   },
   "dependencies": {
     "@fontsource-variable/golos-text": "latest",
     "@fontsource/noto-sans": "latest",
     "@pdf-lib/fontkit": "latest",
     "@phosphor-icons/react": "latest",
+    "@prisma/client": "^6.16.0",
     "@radix-ui/react-dialog": "latest",
     "express": "latest",
+    "minio": "^8.0.7",
     "multer": "latest",
     "pdf-lib": "latest",
     "pdfjs-dist": "^6.3.289",
@@ -36,8 +43,15 @@
     "@types/react-dom": "latest",
     "@vitejs/plugin-react": "latest",
     "concurrently": "latest",
+    "prisma": "^6.16.0",
     "tsx": "latest",
     "typescript": "latest",
     "vite": "latest"
+  },
+  "allowScripts": {
+    "@prisma/client@6.16.0": true,
+    "@prisma/engines@6.16.0": true,
+    "esbuild@0.28.2": true,
+    "prisma@6.16.0": true
   }
 }
