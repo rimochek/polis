@@ -12,6 +12,9 @@ The application data lives in the `postgres-data` and `minio-data` Docker volume
 3. Add these GitHub Actions Secrets: `EC2_HOST`, `EC2_USER`, `EC2_SSH_KEY`, `AUTH_SECRET`,
    `POSTGRES_PASSWORD`, `MINIO_ROOT_PASSWORD`, and whichever AI keys are used:
    `OPENAI_API_KEY`, `GOOGLE_API_KEY`, or `GOOGLE_ACCESS_TOKEN`.
+    `EC2_SSH_KEY` must be the complete unencrypted private key, including its matching
+    `BEGIN` and `END` lines;
+   do not use the `.pub` file and do not put it in Variables.
 4. Add these GitHub Actions Variables: `APP_PORT`, `APP_ORIGIN`, `POSTGRES_DB`, `POSTGRES_USER`,
    `MINIO_ROOT_USER`, `STORAGE_BUCKET`, `STORAGE_REGION`, `AI_PROVIDER`, `OPENAI_MODEL`,
    `GOOGLE_MODEL`, `GOOGLE_CLOUD_PROJECT`, `GOOGLE_CLOUD_LOCATION`, and `GOOGLE_VERTEX_EXPRESS`.

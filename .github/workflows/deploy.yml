@@ -19,6 +19,22 @@ jobs:
       - name: Package source
         run: tar --exclude=.git --exclude=node_modules --exclude=dist --exclude=data --exclude='.env*' -czf polis-source.tar.gz .
 
+      - name: Validate deployment SSH key
+        env:
+          DEPLOY_SSH_KEY: ${{ secrets.EC2_SSH_KEY }}
+        run: |
+          set -eu
+          test -n "$DEPLOY_SSH_KEY" || { echo 'EC2_SSH_KEY is empty or missing in repository Secrets'; exit 1; }
+          key_file=$(mktemp)
+          trap 'rm -f "$key_file"' EXIT
+          printf '%s\n' "$DEPLOY_SSH_KEY" > "$key_file"
+          chmod 600 "$key_file"
+          ssh-keygen -y -f "$key_file" >/dev/null || {
+            echo 'EC2_SSH_KEY is not a readable unencrypted private SSH key';
+            echo 'Paste the complete private key, including its BEGIN/END lines, into Settings > Secrets and variables > Actions > Secrets.';
+            exit 1;
+          }
+
       - name: Upload source to EC2
         uses: appleboy/scp-action@v0.1.7
         with:
