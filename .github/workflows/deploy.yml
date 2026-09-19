@@ -104,6 +104,7 @@ jobs:
               "GOOGLE_CLOUD_LOCATION=$GOOGLE_CLOUD_LOCATION" \
               "GOOGLE_VERTEX_EXPRESS=$GOOGLE_VERTEX_EXPRESS" \
               "AUTH_SECRET=$AUTH_SECRET" >> /opt/polis/.env.production
+            umask 022
             mkdir -p "/opt/polis/releases/$RELEASE_TAG"
             tar -xzf /opt/polis/polis-source.tar.gz -C "/opt/polis/releases/$RELEASE_TAG"
             rm -f /opt/polis/polis-source.tar.gz
