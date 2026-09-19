@@ -1,0 +1,166 @@
+/* The hole exposes the actual page element; no duplicate UI or slide canvas. */
+.site-tour {
+  position: fixed;
+  inset: 0;
+  z-index: 18;
+  pointer-events: none;
+}
+.tour-spotlight {
+  position: fixed;
+  border-radius: 10px;
+  box-shadow: 0 0 0 9999px #102823b8;
+  outline: 2px solid #d6edbd;
+  pointer-events: none;
+  transition:
+    top 0.32s ease,
+    left 0.32s ease,
+    width 0.32s ease,
+    height 0.32s ease;
+}
+.tour-dim {
+  position: fixed;
+  inset: 0;
+  background: #102823b8;
+}
+.tour-blocker {
+  position: fixed;
+  pointer-events: auto;
+}
+.tour-tip {
+  position: fixed;
+  pointer-events: auto;
+  background: #fff;
+  color: var(--ink);
+  padding: 18px 20px;
+  border-radius: 14px;
+  box-shadow: 0 12px 48px #071f2940;
+  transition:
+    top 0.32s ease,
+    left 0.32s ease;
+  max-height: calc(100dvh - 24px);
+  overflow: auto;
+}
+.tour-tip-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+.tour-tip-top > span {
+  font-size: 11px;
+  letter-spacing: 1px;
+  color: var(--muted);
+}
+.tour-tip-top button {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  background: transparent;
+  border: 0;
+  border-radius: 50%;
+  margin: -6px -8px -6px 0;
+}
+.tour-tip-top button:hover {
+  background: var(--paper);
+}
+.tour-tip-copy {
+  animation: tour-copy 0.25s ease both;
+}
+.tour-tip h2 {
+  font-size: 18px;
+  line-height: 1.3;
+  letter-spacing: -0.4px;
+  margin-bottom: 8px;
+}
+.tour-tip h2:focus {
+  outline: none;
+}
+.tour-tip p {
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--muted);
+}
+.tour-tip-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-top: 18px;
+}
+.tour-tip-actions button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-size: 12px;
+  min-height: 38px;
+  padding: 0 12px;
+  border-radius: 7px;
+  border: 0;
+}
+.tour-back {
+  background: var(--paper);
+}
+.tour-next {
+  background: var(--teal);
+  color: white;
+}
+.tour-back:disabled {
+  opacity: 0.35;
+}
+.tour-tip button:focus-visible {
+  outline: 3px solid #94be78;
+  outline-offset: 3px;
+}
+.platform-demo {
+  padding-top: 90px;
+  padding-bottom: 90px;
+}
+.platform-demo > .section-intro {
+  margin-bottom: 28px;
+}
+.platform-demo .demo-requirements,
+.platform-demo .cell-note {
+  display: none;
+}
+.platform-demo .compare {
+  box-shadow: none;
+}
+.platform-demo .section-intro p {
+  max-width: 420px;
+}
+@keyframes tour-copy {
+  from {
+    opacity: 0;
+    transform: translateY(5px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@media (max-width: 650px) {
+  .platform-demo {
+    padding-top: 50px;
+    padding-bottom: 50px;
+  }
+  .tour-tip {
+    padding: 15px 17px;
+  }
+  .tour-tip h2 {
+    font-size: 16px;
+  }
+  .tour-tip p {
+    font-size: 12px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tour-spotlight,
+  .tour-tip {
+    transition: none;
+  }
+  .tour-tip-copy {
+    animation: none;
+  }
+}

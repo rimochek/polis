@@ -1,6 +1,7 @@
 // Authenticated broker workspace: document intake, comparison review, and gated export.
 import { lazy, Suspense, useEffect, useRef, useState, type ReactNode } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
+import LoadingScreen from './LoadingScreen';
 import {
   ArrowDown,
   ArrowLeft,
@@ -72,14 +73,14 @@ function csrf() {
   );
 }
 // Retry an expired access session once; preserve the original request and CSRF header.
-async function api<T>(path: string, options?: RequestInit, retried = false): Promise<T> {
+async function requestApi<T>(path: string, options?: RequestInit, retried = false): Promise<T> {
   const headers = new Headers(options?.headers);
   const token = csrf();
   if (token) headers.set('X-CSRF-Token', decodeURIComponent(token));
   const response = await fetch(`/api${path}`, { ...options, headers, credentials: 'include' });
   if (response.status === 401 && !retried && !path.startsWith('/auth/')) {
     const refreshed = await fetch('/api/auth/refresh', { method: 'POST', credentials: 'include' });
-    if (refreshed.ok) return api<T>(path, options, true);
+    if (refreshed.ok) return requestApi<T>(path, options, true);
   }
   const data = await response.json();
   if (!response.ok) throw new Error(data.error || 'Не удалось выполнить действие.');
@@ -143,7 +144,16 @@ function Modal({
   );
 }
 
-export default function App() {
+export default function App({
+  request = requestApi,
+  documentUrl = (id: string) => `/api/documents/${id}`,
+  exportDocument,
+}: {
+  request?: <T>(path: string, options?: RequestInit) => Promise<T>;
+  documentUrl?: (id: string) => string;
+  exportDocument?: (item: Case) => Blob;
+} = {}) {
+  const api = request;
   const [user, setUser] = useState<{ id: string; email: string } | null>(null);
   const [authReady, setAuthReady] = useState(false);
   const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
@@ -239,10 +249,12 @@ export default function App() {
     }
   }
   async function logout() {
-    await api('/auth/logout', { method: 'POST' });
-    setUser(null);
-    setCases([]);
-    setLoaded(false);
+    await action(async () => {
+      await api('/auth/logout', { method: 'POST' });
+      setUser(null);
+      setCases([]);
+      setLoaded(false);
+    });
   }
   useEffect(() => {
     if (!notice) return;
@@ -372,12 +384,16 @@ export default function App() {
     if (!c) return;
     await action(async () => {
       await api<Case>(`/cases/${c.id}`, { method: 'PATCH', ...json({ comment }) }).then(commit);
-      const response = await fetch(`/api/cases/${c.id}/export`, { credentials: 'include' });
-      if (!response.ok) {
-        const body = await response.json();
-        throw new Error(body.error);
+      let blob: Blob;
+      if (exportDocument) blob = exportDocument({ ...c, comment });
+      else {
+        const response = await fetch(`/api/cases/${c.id}/export`, { credentials: 'include' });
+        if (!response.ok) {
+          const body = await response.json();
+          throw new Error(body.error);
+        }
+        blob = await response.blob();
       }
-      const blob = await response.blob();
       const url = URL.createObjectURL(blob);
       if (print) {
         const win = window.open(url, '_blank');
@@ -493,16 +509,7 @@ export default function App() {
       </div>
     </>
   );
-  if (!authReady)
-    return (
-      <div className="auth-page">
-        <div className="auth-card">
-          <span className="brand-mark">p</span>
-          <h1>Открываем Polis</h1>
-          <div className="spinner" />
-        </div>
-      </div>
-    );
+  if (!authReady) return <LoadingScreen />;
   if (!user)
     return (
       <div className="auth-page">
@@ -599,8 +606,7 @@ export default function App() {
         </header>
         {!loaded ? (
           <div className="loading-page">
-            <div className="spinner" />
-            <h2>Открываем пространство</h2>
+            {!error && <LoadingScreen embedded label="Открываем пространство" />}
             {error && (
               <>
                 <p role="alert">{error}</p>
@@ -1099,7 +1105,7 @@ export default function App() {
                               {o.documents.map((d) => (
                                 <a
                                   key={d.id}
-                                  href={`/api/documents/${d.id}`}
+                                  href={documentUrl(d.id)}
                                   target="_blank"
                                   rel="noreferrer"
                                 >
@@ -1616,7 +1622,7 @@ export default function App() {
                       <FilePdf size={18} />
                       <span>Страница {draft.evidence.page}</span>
                       <a
-                        href={`/api/documents/${draft.evidence.fileId}#page=${draft.evidence.page}`}
+                        href={`${documentUrl(draft.evidence.fileId)}#page=${draft.evidence.page}`}
                         target="_blank"
                         rel="noreferrer"
                       >
@@ -1625,7 +1631,11 @@ export default function App() {
                       </a>
                     </div>
                     <Suspense fallback={<p className="muted">Открываем документ…</p>}>
-                      <PdfPreview fileId={draft.evidence.fileId} page={draft.evidence.page} />
+                      <PdfPreview
+                        fileId={draft.evidence.fileId}
+                        page={draft.evidence.page}
+                        url={documentUrl(draft.evidence.fileId)}
+                      />
                     </Suspense>
                     <p className="muted small-copy">
                       Проверьте цитату и контекст: ссылка модели сама по себе не подтверждает

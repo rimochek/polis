@@ -1,0 +1,141 @@
+.polis-loading {
+  box-sizing: border-box;
+  display: grid;
+  place-items: center;
+  min-height: 100svh;
+  padding: 32px 20px;
+  background: #f7f9f6;
+  color: #182a2b;
+  font-family: 'Golos Text Variable', sans-serif;
+}
+.polis-loading:not(.polis-loading-embedded) {
+  position: fixed;
+  inset: 0;
+}
+.polis-loading-embedded {
+  min-height: 320px;
+  width: 100%;
+  background: transparent;
+}
+.polis-loading-content {
+  text-align: center;
+}
+.polis-loading-brand {
+  font-size: 28px;
+  font-weight: 650;
+  letter-spacing: -1.5px;
+}
+.polis-loading-brand > span {
+  color: #246354;
+}
+.polis-loading-scene {
+  position: relative;
+  width: 216px;
+  height: 150px;
+  margin: 20px auto 12px;
+}
+.polis-loading-paper {
+  box-sizing: border-box;
+  position: absolute;
+  top: 35px;
+  left: 82px;
+  width: 52px;
+  height: 80px;
+  border: 1px solid #b8ccbc;
+  border-radius: 6px;
+  background: #fff;
+  box-shadow: 0 4px 12px #182a2b08;
+  transform: translate(var(--fan-x), var(--fan-y)) rotate(var(--angle));
+  animation: polis-gather 3.6s ease-in-out infinite;
+}
+.polis-loading-paper::before {
+  content: '';
+  position: absolute;
+  top: 11px;
+  left: 9px;
+  width: 18px;
+  height: 7px;
+  border-radius: 2px;
+  background: #a5c893;
+}
+.polis-loading-paper::after {
+  content: '';
+  position: absolute;
+  top: 29px;
+  left: 9px;
+  width: 32px;
+  height: 1px;
+  background: #c7d6ca;
+  box-shadow:
+    0 10px #c7d6ca,
+    0 20px #c7d6ca,
+    0 30px #c7d6ca;
+}
+.polis-loading-paper-one {
+  --fan-x: -20px;
+  --fan-y: 4px;
+  --angle: -14deg;
+  --column: -55px;
+}
+.polis-loading-paper-two {
+  --fan-x: 0px;
+  --fan-y: -5px;
+  --angle: 0deg;
+  --column: 0px;
+  z-index: 1;
+}
+.polis-loading-paper-three {
+  --fan-x: 20px;
+  --fan-y: 4px;
+  --angle: 14deg;
+  --column: 55px;
+}
+.polis-loading-frame {
+  position: absolute;
+  inset: 24px 14px;
+  border: 1px solid #d3dfce;
+  border-radius: 12px;
+  background: #eaf1e5;
+  opacity: 0;
+  animation: polis-table 3.6s ease-in-out infinite;
+}
+.polis-loading-label {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.5;
+  color: #5c6a60;
+}
+@keyframes polis-gather {
+  0%,
+  14%,
+  100% {
+    transform: translate(var(--fan-x), var(--fan-y)) rotate(var(--angle));
+  }
+  43%,
+  76% {
+    transform: translate(var(--column), 0) rotate(0);
+  }
+}
+@keyframes polis-table {
+  0%,
+  20%,
+  100% {
+    opacity: 0;
+    transform: scale(0.94);
+  }
+  43%,
+  76% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .polis-loading-paper {
+    animation: none;
+    transform: translate(var(--column), 0);
+  }
+  .polis-loading-frame {
+    animation: none;
+    opacity: 1;
+  }
+}
