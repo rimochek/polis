@@ -8,7 +8,7 @@ export default function PdfPreview({fileId,page:initialPage}:{fileId:string;page
  const ref=useRef<HTMLCanvasElement>(null);const [page,setPage]=useState(initialPage);const [total,setTotal]=useState(0);const [loading,setLoading]=useState(true);const [error,setError]=useState('');const [zoom,setZoom]=useState(false);
  useEffect(()=>{setPage(initialPage);},[initialPage,fileId]);
  useEffect(()=>{
-  let active=true;let render:RenderTask|undefined;setLoading(true);setError('');const task=getDocument({url:`/api/documents/${fileId}`,useSystemFonts:true});
+    let active=true;let render:RenderTask|undefined;setLoading(true);setError('');const task=getDocument({url:`/api/documents/${fileId}`,useSystemFonts:true,httpHeaders:{},withCredentials:true});
   void(async()=>{try{const pdf=await task.promise;if(!active)return;setTotal(pdf.numPages);const pdfPage=await pdf.getPage(Math.min(page,pdf.numPages));if(!active||!ref.current)return;const viewport=pdfPage.getViewport({scale:1.6});const canvas=ref.current;canvas.width=viewport.width;canvas.height=viewport.height;render=pdfPage.render({canvas,viewport});await render.promise;if(active)setLoading(false);}catch(e){if(active){setLoading(false);setError('Не удалось показать страницу. Откройте исходный PDF по ссылке выше.');}}})();
   return()=>{active=false;render?.cancel();void task.destroy();};
  },[fileId,page]);
