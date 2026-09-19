@@ -1,5 +1,6 @@
 // HTTP API composition: authenticate requests, scope case access, and coordinate storage and analysis.
 import express from 'express';
+import {workspaceRoutes} from './workspace.js';
 import multer from 'multer';
 import { AsyncLocalStorage } from 'node:async_hooks';
 import fs from 'node:fs';

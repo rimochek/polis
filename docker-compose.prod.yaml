@@ -28,6 +28,7 @@ services:
       STORAGE_ACCESS_KEY_ID: ${MINIO_ROOT_USER}
       STORAGE_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD}
       AI_PROVIDER: ${AI_PROVIDER:-vertex}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       OPENAI_MODEL: ${OPENAI_MODEL:-gpt-5.6-terra}
       GOOGLE_API_KEY: ${GOOGLE_API_KEY:-}
@@ -37,14 +38,16 @@ services:
       GOOGLE_CLOUD_LOCATION: ${GOOGLE_CLOUD_LOCATION:-global}
       GOOGLE_VERTEX_EXPRESS: ${GOOGLE_VERTEX_EXPRESS:-false}
     expose:
-      - '5174'
+      - "5174"
+    volumes:
+      - legal-data:/app/data/legal
     depends_on:
       postgres:
         condition: service_healthy
       minio:
         condition: service_healthy
     command: >-
-      sh -c 'npx prisma migrate deploy && node --import tsx server/index.ts'
+      sh -c 'npx prisma migrate deploy && (node --import tsx scripts/fetch-legal-sources.ts || echo "Legal sources fetch failed; falling back to the last successfully fetched copy, if any.") && node --import tsx server/index.ts'
 
   postgres:
     image: postgres:16-alpine
@@ -79,3 +82,4 @@ services:
 volumes:
   postgres-data:
   minio-data:
+  legal-data:

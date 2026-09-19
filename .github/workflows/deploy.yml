@@ -73,11 +73,12 @@ jobs:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
           GOOGLE_ACCESS_TOKEN: ${{ secrets.GOOGLE_ACCESS_TOKEN }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_SSH_KEY }}
-          envs: RELEASE_TAG,APP_PORT,APP_ORIGIN,POSTGRES_DB,POSTGRES_USER,MINIO_ROOT_USER,STORAGE_BUCKET,STORAGE_REGION,AI_PROVIDER,OPENAI_MODEL,GOOGLE_MODEL,GOOGLE_CLOUD_PROJECT,GOOGLE_CLOUD_LOCATION,GOOGLE_VERTEX_EXPRESS,AUTH_SECRET,POSTGRES_PASSWORD,MINIO_ROOT_PASSWORD,OPENAI_API_KEY,GOOGLE_API_KEY,GOOGLE_ACCESS_TOKEN
+          envs: RELEASE_TAG,APP_PORT,APP_ORIGIN,POSTGRES_DB,POSTGRES_USER,MINIO_ROOT_USER,STORAGE_BUCKET,STORAGE_REGION,AI_PROVIDER,OPENAI_MODEL,GOOGLE_MODEL,GOOGLE_CLOUD_PROJECT,GOOGLE_CLOUD_LOCATION,GOOGLE_VERTEX_EXPRESS,AUTH_SECRET,POSTGRES_PASSWORD,MINIO_ROOT_PASSWORD,OPENAI_API_KEY,GOOGLE_API_KEY,GOOGLE_ACCESS_TOKEN,GEMINI_API_KEY
           script: |
             set -eu
             umask 077
@@ -98,6 +99,7 @@ jobs:
               "GOOGLE_MODEL=$GOOGLE_MODEL" \
               "GOOGLE_API_KEY=$GOOGLE_API_KEY" \
               "GOOGLE_ACCESS_TOKEN=$GOOGLE_ACCESS_TOKEN" \
+              "GEMINI_API_KEY=$GEMINI_API_KEY" \
               "GOOGLE_CLOUD_PROJECT=$GOOGLE_CLOUD_PROJECT" \
               "GOOGLE_CLOUD_LOCATION=$GOOGLE_CLOUD_LOCATION" \
               "GOOGLE_VERTEX_EXPRESS=$GOOGLE_VERTEX_EXPRESS" \
@@ -108,6 +110,6 @@ jobs:
             ln -sfn "/opt/polis/releases/$RELEASE_TAG" /opt/polis/current
             cd /opt/polis/current
             docker compose --env-file /opt/polis/.env.production -f docker-compose.prod.yaml build --pull
-            docker compose --env-file /opt/polis/.env.production -f docker-compose.prod.yaml up -d --remove-orphans
+            docker compose --env-file /opt/polis/.env.production -f docker-compose.prod.yaml up -d --remove-orphans --force-recreate
             find /opt/polis/releases -mindepth 1 -maxdepth 1 -type d ! -name "$RELEASE_TAG" -mtime +7 -exec rm -rf {} +
             docker image prune -af --filter "until=168h"

@@ -50,5 +50,11 @@
     "tsx": "latest",
     "typescript": "latest",
     "vite": "latest"
+  },
+  "allowScripts": {
+    "@prisma/client@6.16.0": true,
+    "@prisma/engines@6.16.0": true,
+    "esbuild@0.28.2": true,
+    "prisma@6.16.0": true
   }
 }
