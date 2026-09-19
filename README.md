@@ -1,35 +1,114 @@
-# Polis — local insurance broker prototype
+# Polis
 
-Russian-language workspace for comparing business property insurance proposals with client requirements. Includes a clearly labelled synthetic case with three fictional insurers and real generated PDFs.
+Polis is a Russian-language insurance broker workspace for comparing commercial property insurance proposals against a client's requirements. It combines a React application, an Express API, and an independent public landing page with a synthetic browser demo.
 
-## Run
+Brokers can upload proposals from up to three insurers, inspect AI-extracted conditions and PDF citations, review or edit findings, and export a self-contained HTML comparison. All example companies, prices, and policies are fictional.
 
-Node 24 is recommended. Run `npm install`, start PostgreSQL with `docker compose -f docker-compose-dev.yaml up -d`, set `DATABASE_URL` and a random `AUTH_SECRET` in `.env`, then run `npm run db:generate` and `npm run db:migrate`. Start the app with `npm run dev` and open http://127.0.0.1:5173. The API listens on 127.0.0.1:5174. Docker access and PostgreSQL must be available before starting the server.
+## Quick start
 
-The workspace uses email/password accounts with access and rotating refresh sessions in HttpOnly cookies. Registering an account creates an independent synthetic demo company. Cases and uploaded PDF bytes are owned by the account in PostgreSQL; the public landing and its browser demo remain static and unauthenticated. AI provider credentials are deployment-wide environment settings and cannot be changed through the authenticated UI.
+Prerequisites: Node.js 24, npm, and Docker Engine with Docker Compose. Run commands from the repository root. npm and `package-lock.json` are the supported dependency workflow.
 
-## Real analysis
+```sh
+npm ci
+cp .env.example .env
+```
 
-Copy `.env.example` to `.env`. The default provider is Google Cloud Vertex AI with `gemini-3.8-flash`. Open the local app's analysis settings to enter your Cloud project and a Vertex API key or temporary OAuth access token, then test access. See [GOOGLE-CLOUD.md](GOOGLE-CLOUD.md) for setup and token expiry. Alternatively set `AI_PROVIDER=openai`, `OPENAI_API_KEY` and `OPENAI_MODEL` (default `gpt-5.6-terra`). API access and billing must be enabled separately. Credentials are saved server-side and are never returned by the API or bundled into the frontend. No API credentials are included in this repository.
+Set `AUTH_SECRET` in `.env` to a random value of at least 32 characters. Generate one with:
 
-Create a case, enter client requirements, and upload 2–3 insurer PDF packages. Each PDF must be 1–40 pages and at most 12 MB, without a password. One package per insurer; combine related terms in one PDF before upload. New versions preserve the original file. Analysis sends the latest PDF of each offer to the selected provider: Vertex AI Gemini or OpenAI Responses API (with `store:false` for OpenAI). Both integrations request structured output. No email or insurer integration is used. Files and results are stored locally under ignored `data/`; the provider's applicable data handling still applies to requests.
+```sh
+node -e "console.log(require('node:crypto').randomBytes(32).toString('hex'))"
+```
 
-Review citations in the source drawer, edit findings, and confirm review. Clarification drafts are copied, not sent. Updated documents or requirements invalidate the comparison and previous approvals. Reanalysis compares field values with the previous successful result. Export is blocked until all fields are reviewed on the current revision; unknown conditions and mismatches remain visible in the output. Download creates self-contained HTML; use Print / PDF for browser PDF output.
+The example database and storage credentials match the development Compose services. Set `APP_ORIGIN=http://127.0.0.1:5173` for local development. Then:
 
-## Verification and limits
+```sh
+docker compose -f docker-compose-dev.yaml up -d
+npm run db:generate
+npm run db:migrate
+npm run dev
+```
 
-`npm run build` type-checks and builds the UI. `npm test` checks citation bounds, incomplete responses and export gates. Browser QA uses the user's Playwright CLI installation.
+Open <http://127.0.0.1:5173> and register an account. Registration creates a private synthetic demo case; no AI key or seed command is needed for that case. The API uses port 5174, PostgreSQL 5432, MinIO 9000, and the MinIO console 9001. `APP_PORT` controls the production Docker entry point, not the development API port.
 
-The demo uses deterministic synthetic results, never a disguised live model response. Live model accuracy is not established by the demo. Citation presence/page bounds are checked programmatically; quotation correctness and completeness require a broker. No coverage recommendation, issuance, payment, team sharing or guaranteed claim outcome is implemented. PostgreSQL data is retained in the Compose volume; deleting `data/` no longer resets database records.
+## Using the workspace
 
-## Public landing and browser demo
+1. Create a case and enter the client's requirements.
+2. Add two or three insurer proposals. Each upload must be an unencrypted PDF of 1–40 pages, no larger than 12 MB. Combine related terms into one PDF per insurer.
+3. Configure an AI provider and run analysis. Only the latest document version of each offer is analyzed.
+4. Inspect citations in the PDF drawer, correct findings, and confirm review.
+5. Select an insurer if desired and export the comparison as HTML. Use the browser's print dialog for PDF output.
 
-`npm run build:landing` generates only synthetic documents, type-checks the project, builds the independent landing and verifies the publication file allowlist. Output: `landing/dist/`. `npm run dev:landing` previews it on http://127.0.0.1:5175 after the first build. Page `/demo.html` is an interactive browser demonstration, with source PDFs, per-condition review, insurer selection and self-contained HTML export. State is confined to the current page session.
+Changes to requirements or documents invalidate the comparison and review approvals. Export requires every condition to be reviewed on the current revision. Clarification drafts are copied; the application does not send them.
 
-Deploy only `landing/dist/`, which includes a physical `demo.html` entry to work without SPA rewrites. Do not deploy the repository root or the local Express API. The public artifact does not contain credentials or real client documents. `scripts/deploy-payload.cjs prepare` produces an ignored, allowlisted Vercel API file payload for the same static build. The generated editorial image has provenance in `landing/public/images/broker-desk.webp.json`; that non-runtime sidecar is excluded from the deployment.
+## AI configuration
 
-Browser checks: `scripts/landing-qa.cjs` (functional flow), `scripts/landing-capture.cjs` (desktop/mobile visual evidence), run via `scripts/pw.ps1 run-code --filename=...`.
+Set deployment-wide credentials in `.env`; see [.env.example](.env.example) and the [AI configuration guide](docs/ai-configuration.md). The application supports Vertex AI Gemini (`AI_PROVIDER=vertex`) and OpenAI Responses (`AI_PROVIDER=openai`). Model defaults are defined in `server/ai-config.ts` and can be overridden with `GOOGLE_MODEL` or `OPENAI_MODEL`.
 
-## Design references
+The authenticated settings dialog can also save Google credentials to the server's `.env`. These settings apply to all accounts on that server. API responses expose configuration status, not credentials. Live analysis sends PDF content and client requirements to the selected provider; OpenAI requests set `store: false`. The synthetic demo uses deterministic results.
 
-Taste (applicable composition rules), Impeccable (Operate mode, review), Awesome DESIGN.md (Airtable community reference) and Playwright CLI. Typography: Golos Text; document font: Noto Sans (npm packages with licenses). All example insurers and prices are fictional.
+## Repository map
+
+| Path                   | Responsibility                                                                 |
+| ---------------------- | ------------------------------------------------------------------------------ |
+| `src/`                 | Authenticated React workspace and PDF viewer                                   |
+| `server/`              | Express routes, authentication, AI adapters, persistence, and document storage |
+| `shared/`              | Shared domain types, comparison fields, and review rules                       |
+| `landing/`             | Independent static site, browser demo, and public assets                       |
+| `prisma/`              | Database schema, ordered migration history, and seed entry point               |
+| `tests/`               | Node test runner suites for analysis, auth, Gemini, and storage                |
+| `scripts/landing/`     | Synthetic asset preparation and publication validation                         |
+| `scripts/qa/`          | Landing browser checks and screenshots                                         |
+| `scripts/maintenance/` | Document storage migration utility                                             |
+| `scripts/demo/`        | Optional presentation PDF generator                                            |
+| `scripts/legacy/`      | Historical checks for the former unauthenticated API                           |
+| `docs/`                | Product, architecture, design, and AI/deployment documentation                 |
+| `deploy/`              | EC2 instructions and Nginx configurations                                      |
+| `.github/`             | Deployment and code quality workflows                                          |
+| `.impeccable/`         | Design-tool metadata and source prompts                                        |
+
+Root-level package, TypeScript, Vite, Docker, Compose, and editor files configure the project. `public/` contains workspace assets. `data/`, `dist/`, `landing/dist/`, `node_modules/`, and QA outputs are ignored local or generated files. See [repository conventions](docs/repository.md) for ownership and generated-file rules.
+
+## Development commands
+
+| Command                             | Purpose                                                          |
+| ----------------------------------- | ---------------------------------------------------------------- |
+| `npm run dev`                       | Start API and workspace with concurrent processes                |
+| `npm run server` / `npm run client` | Start either process independently                               |
+| `npm run build`                     | Type-check the project and build the workspace into `dist/`      |
+| `npm test`                          | Run automated unit and mocked integration tests                  |
+| `npm run format`                    | Format supported source and documentation files with Prettier    |
+| `npm run format:check`              | Check formatting without modifying files                         |
+| `npm run db:format`                 | Format the Prisma schema                                         |
+| `npm run db:generate`               | Generate the Prisma client                                       |
+| `npm run db:migrate`                | Apply/create development migrations                              |
+| `npm run db:seed`                   | Run the informational seed entry point; creates no global data   |
+| `npm run prepare:landing`           | Regenerate synthetic landing documents and data                  |
+| `npm run dev:landing`               | Serve the landing at port 5175                                   |
+| `npm run build:landing`             | Generate, type-check, build, and validate the static publication |
+
+See [scripts](scripts/README.md) for browser QA, optional Python tooling, and the storage backfill utility.
+
+## Storage and architecture
+
+PostgreSQL stores accounts, refresh sessions, case payloads, and document metadata. Uploads currently write PDF bytes to both PostgreSQL and MinIO; document serving prefers MinIO when a storage key exists, while live analysis still reads database bytes. The maintenance backfill clears legacy database bytes, so it needs the analysis read path to be migrated before use on cases requiring reanalysis. See [architecture](docs/architecture.md).
+
+Authentication uses password hashing, signed short-lived access cookies, rotating refresh sessions, and CSRF checks. Case access is scoped to the signed-in account. The local `data/` directory is used during synthetic PDF generation; deleting it does not reset the database. Compose volumes retain PostgreSQL and MinIO data.
+
+## Landing and deployment
+
+```sh
+npm run build:landing
+npm run dev:landing
+```
+
+The static output is `landing/dist/`, including a physical `demo.html` entry, three synthetic PDFs, and bundled assets. The publication validator rejects unexpected files and excludes image provenance metadata. The browser demo keeps its state only for the current page session.
+
+Use [EC2 deployment instructions](deploy/README.md) for the authenticated application and [landing deployment notes](docs/deployment/landing.md) for the independent static site. Publish the static output directory only.
+
+## Verification and limitations
+
+Run `npm run format:check`, `npm test`, `npm run build`, and `npm run build:landing` before submitting changes. Automated tests cover citation validation, incomplete model responses, review gates, authentication helpers, and storage behavior. They do not establish live provider accuracy or replace a full authenticated browser test.
+
+Citation presence and page bounds are checked programmatically; a broker must verify quotation accuracy and completeness. No issuance, payment, team sharing, insurer messaging, or guaranteed claim outcome is implemented.
+
+Design references are recorded in [workspace design](docs/design/workspace.md), [landing design](docs/design/landing.md), and the [product brief](docs/product.md). Typography uses Golos Text and Noto Sans from npm packages; the landing image provenance remains beside its source asset.

@@ -1,0 +1,15 @@
+node_modules/
+dist/
+landing/dist/
+data/
+artifacts/
+output/
+outputs/
+tmp/
+.env
+.env.*
+package-lock.json
+.impeccable/
+landing/src/demo-data.json
+landing/public/
+prisma/migrations/

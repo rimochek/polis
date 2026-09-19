@@ -8,12 +8,12 @@ The application data lives in the `postgres-data` and `minio-data` Docker volume
    check with `sudo ss -ltnp | grep ':18080'`. If you choose another port, use the same
    port in the Nginx `proxy_pass`.
 2. Copy `deploy/nginx/ec2.conf` to the Nginx sites directory, replace the domain, enable it,
-    and provision TLS with Certbot. The external Nginx proxies only to `127.0.0.1:${APP_PORT}`.
+   and provision TLS with Certbot. The external Nginx proxies only to `127.0.0.1:${APP_PORT}`.
 3. Add these GitHub Actions Secrets: `EC2_HOST`, `EC2_USER`, `EC2_SSH_KEY`, `AUTH_SECRET`,
    `POSTGRES_PASSWORD`, `MINIO_ROOT_PASSWORD`, and whichever AI keys are used:
    `OPENAI_API_KEY`, `GOOGLE_API_KEY`, or `GOOGLE_ACCESS_TOKEN`.
-    `EC2_SSH_KEY` must be the complete unencrypted private key, including its matching
-    `BEGIN` and `END` lines;
+   `EC2_SSH_KEY` must be the complete unencrypted private key, including its matching
+   `BEGIN` and `END` lines;
    do not use the `.pub` file and do not put it in Variables.
 4. Add these GitHub Actions Variables: `APP_PORT`, `APP_ORIGIN`, `POSTGRES_DB`, `POSTGRES_USER`,
    `MINIO_ROOT_USER`, `STORAGE_BUCKET`, `STORAGE_REGION`, `AI_PROVIDER`, `OPENAI_MODEL`,

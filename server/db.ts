@@ -1,7 +1,10 @@
-import {PrismaClient} from '@prisma/client';
+// Reuse the Prisma connection pool when modules are reloaded during development.
+import { PrismaClient } from '@prisma/client';
 
-const globalForPrisma=globalThis as unknown as {prisma?:PrismaClient};
-export const prisma=globalForPrisma.prisma??new PrismaClient();
-if(process.env.NODE_ENV!=='production')globalForPrisma.prisma=prisma;
+const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient };
+export const prisma = globalForPrisma.prisma ?? new PrismaClient();
+if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma;
 
-export async function disconnectDatabase(){await prisma.$disconnect();}
+export async function disconnectDatabase() {
+  await prisma.$disconnect();
+}

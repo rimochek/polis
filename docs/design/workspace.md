@@ -2,120 +2,120 @@
 name: Polis
 description: A calm evidence desk for broker review and comparison.
 colors:
-  primary: "#246354"
-  primary-hover: "#194c40"
-  charcoal-green: "#182a2b"
-  lime: "#d6edbd"
-  ink: "#253635"
-  muted: "#687771"
-  canvas: "#f7f9f8"
-  paper: "#ffffff"
-  dialog-paper: "#fcfdfa"
-  divider: "#e1e7e3"
-  evidence-text: "#5c6a60"
-  source-text: "#5b6a60"
-  match: "#6d9672"
-  mismatch: "#b39550"
-  unknown: "#8e9b8b"
-  mismatch-surface: "#fffcf5"
-  unknown-surface: "#f7f8f5"
-  finding-mismatch: "#7e5e24"
-  finding-unknown: "#586545"
-  focus: "#559885"
+  primary: '#246354'
+  primary-hover: '#194c40'
+  charcoal-green: '#182a2b'
+  lime: '#d6edbd'
+  ink: '#253635'
+  muted: '#687771'
+  canvas: '#f7f9f8'
+  paper: '#ffffff'
+  dialog-paper: '#fcfdfa'
+  divider: '#e1e7e3'
+  evidence-text: '#5c6a60'
+  source-text: '#5b6a60'
+  match: '#6d9672'
+  mismatch: '#b39550'
+  unknown: '#8e9b8b'
+  mismatch-surface: '#fffcf5'
+  unknown-surface: '#f7f8f5'
+  finding-mismatch: '#7e5e24'
+  finding-unknown: '#586545'
+  focus: '#559885'
 typography:
   display:
     fontFamily: "'Golos Text Variable', sans-serif"
-    fontSize: "30px"
+    fontSize: '30px'
     fontWeight: 600
     lineHeight: 1.3
-    letterSpacing: "-1px"
+    letterSpacing: '-1px'
   headline:
     fontFamily: "'Golos Text Variable', sans-serif"
-    fontSize: "19px"
+    fontSize: '19px'
     fontWeight: 550
-    letterSpacing: "-0.4px"
+    letterSpacing: '-0.4px'
   title:
     fontFamily: "'Golos Text Variable', sans-serif"
-    fontSize: "16px"
+    fontSize: '16px'
     fontWeight: 550
   body:
     fontFamily: "'Golos Text Variable', sans-serif"
-    fontSize: "15px"
+    fontSize: '15px'
   evidence:
     fontFamily: "'Golos Text Variable', sans-serif"
-    fontSize: "13px"
+    fontSize: '13px'
     fontWeight: 400
     lineHeight: 1.65
   condition:
     fontFamily: "'Golos Text Variable', sans-serif"
-    fontSize: "14px"
+    fontSize: '14px'
     fontWeight: 500
     lineHeight: 1.55
   label:
     fontFamily: "'Golos Text Variable', sans-serif"
-    fontSize: "13px"
+    fontSize: '13px'
     fontWeight: 500
     lineHeight: 1.4
   premium:
     fontFamily: "'Golos Text Variable', sans-serif"
-    fontSize: "27px"
+    fontSize: '27px'
     fontWeight: 550
     lineHeight: 1.2
-    letterSpacing: "-0.9px"
+    letterSpacing: '-0.9px'
 rounded:
-  chip: "5px"
-  field: "7px"
-  control: "8px"
-  container: "10px"
-  table: "11px"
-  dialog: "14px"
+  chip: '5px'
+  field: '7px'
+  control: '8px'
+  container: '10px'
+  table: '11px'
+  dialog: '14px'
 spacing:
-  compact: "8px"
-  small: "12px"
-  medium: "20px"
-  large: "28px"
-  page: "40px"
+  compact: '8px'
+  small: '12px'
+  medium: '20px'
+  large: '28px'
+  page: '40px'
 components:
   button-primary:
-    backgroundColor: "{colors.primary}"
-    textColor: "{colors.paper}"
-    typography: "{typography.label}"
-    rounded: "{rounded.control}"
-    padding: "10px 14px"
+    backgroundColor: '{colors.primary}'
+    textColor: '{colors.paper}'
+    typography: '{typography.label}'
+    rounded: '{rounded.control}'
+    padding: '10px 14px'
   button-primary-hover:
-    backgroundColor: "{colors.primary-hover}"
+    backgroundColor: '{colors.primary-hover}'
   button-secondary:
-    backgroundColor: "{colors.paper}"
-    textColor: "#3e5148"
-    typography: "{typography.label}"
-    rounded: "{rounded.control}"
-    padding: "10px 14px"
+    backgroundColor: '{colors.paper}'
+    textColor: '#3e5148'
+    typography: '{typography.label}'
+    rounded: '{rounded.control}'
+    padding: '10px 14px'
   button-text:
-    textColor: "{colors.primary}"
-    padding: "7px 0"
+    textColor: '{colors.primary}'
+    padding: '7px 0'
   input:
-    backgroundColor: "{colors.paper}"
-    textColor: "{colors.ink}"
-    rounded: "{rounded.field}"
-    padding: "11px 12px"
+    backgroundColor: '{colors.paper}'
+    textColor: '{colors.ink}'
+    rounded: '{rounded.field}'
+    padding: '11px 12px'
   navigation:
-    backgroundColor: "{colors.charcoal-green}"
-    textColor: "#ccd8d1"
-    rounded: "{rounded.field}"
-    padding: "12px 13px"
+    backgroundColor: '{colors.charcoal-green}'
+    textColor: '#ccd8d1'
+    rounded: '{rounded.field}'
+    padding: '12px 13px'
   chip:
-    backgroundColor: "#f3f6f4"
-    textColor: "{colors.ink}"
-    rounded: "{rounded.chip}"
-    padding: "4px 8px"
+    backgroundColor: '#f3f6f4'
+    textColor: '{colors.ink}'
+    rounded: '{rounded.chip}'
+    padding: '4px 8px'
   requirements:
-    backgroundColor: "{colors.paper}"
-    rounded: "{rounded.container}"
-    padding: "18px 20px"
+    backgroundColor: '{colors.paper}'
+    rounded: '{rounded.container}'
+    padding: '18px 20px'
   condition:
-    textColor: "{colors.ink}"
-    typography: "{typography.condition}"
-    padding: "17px 18px 13px"
+    textColor: '{colors.ink}'
+    typography: '{typography.condition}'
+    padding: '17px 18px 13px'
 ---
 
 # Design System: Polis
@@ -135,7 +135,7 @@ The visual direction adapts the local awesome-design-md Airtable community marke
 - Condition status expressed through icons, text and subtle background tints.
 - Responsive review with one selected insurer at a time on mobile.
 
-This is an extracted implementation record. Token primitives above come from `src/styles.css`, including its final override block; behaviors come from `src/App.tsx`. Product purpose lives in `PRODUCT.md`, and first-surface composition lives in `.impeccable/surface.md`.
+This is an extracted implementation record. Token primitives above come from `src/styles.css`, including its final override block; behaviors come from `src/App.tsx`. Product purpose lives in `docs/product.md`, and first-surface composition lives in `.impeccable/surface.md`.
 
 ## Colors
 
