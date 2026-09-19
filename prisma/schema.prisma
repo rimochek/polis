@@ -54,7 +54,8 @@ model Document {
   size         Int
   version      Int
   createdAt    DateTime   @default(now())
-  bytes        Bytes
+  storageKey   String?
+  bytes        Bytes?
   caseRecord   CaseRecord @relation(fields: [caseRecordId], references: [id], onDelete: Cascade)
 
   @@index([caseRecordId])
