@@ -4,7 +4,9 @@ Russian-language workspace for comparing business property insurance proposals w
 
 ## Run
 
-Node 24 is recommended. Run `npm install`, then `npm run dev`. Open http://127.0.0.1:5173. The API listens only on 127.0.0.1:5174. Keep both processes running. This version is local-only; do not expose it to the Internet without authentication, authorization and production storage controls.
+Node 24 is recommended. Run `npm install`, start PostgreSQL with `docker compose -f docker-compose-dev.yaml up -d`, set `DATABASE_URL` and a random `AUTH_SECRET` in `.env`, then run `npm run db:generate` and `npm run db:migrate`. Start the app with `npm run dev` and open http://127.0.0.1:5173. The API listens on 127.0.0.1:5174. Docker access and PostgreSQL must be available before starting the server.
+
+The workspace uses email/password accounts with access and rotating refresh sessions in HttpOnly cookies. Registering an account creates an independent synthetic demo company. Cases and uploaded PDF bytes are owned by the account in PostgreSQL; the public landing and its browser demo remain static and unauthenticated. AI provider credentials are deployment-wide environment settings and cannot be changed through the authenticated UI.
 
 ## Real analysis
 
@@ -18,7 +20,7 @@ Review citations in the source drawer, edit findings, and confirm review. Clarif
 
 `npm run build` type-checks and builds the UI. `npm test` checks citation bounds, incomplete responses and export gates. Browser QA uses the user's Playwright CLI installation.
 
-The demo uses deterministic synthetic results, never a disguised live model response. Live model accuracy is not established by the demo. Citation presence/page bounds are checked programmatically; quotation correctness and completeness require a broker. No coverage recommendation, issuance, payment, authentication, multi-user sharing or guaranteed claim outcome is implemented. Data is retained on this computer; deleting `data/` resets the local prototype, so back it up if needed.
+The demo uses deterministic synthetic results, never a disguised live model response. Live model accuracy is not established by the demo. Citation presence/page bounds are checked programmatically; quotation correctness and completeness require a broker. No coverage recommendation, issuance, payment, team sharing or guaranteed claim outcome is implemented. PostgreSQL data is retained in the Compose volume; deleting `data/` no longer resets database records.
 
 ## Public landing and browser demo
 
